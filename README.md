@@ -1,2 +1,3 @@
 # EasyBMS
-under construction
+Do it with ease.
+Nobody got time for complex BMS 
