@@ -11,9 +11,9 @@ https://github.com/jontubs/EasyBMS
 #define LTC68041_H
 
 
-#ifndef LTC6804_CS
-#define LTC6804_CS D8
-#endif
+//#ifndef LTC6804_CS
+//#define LTC6804_CS D8
+//#endif
 
 
 /*
@@ -108,10 +108,7 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 #define CELL_CH_6and12 6
 
 
-static const byte csPin = D8;
-static const byte pinMOSI = D7;
-static const byte pinMISO = D6;
-static const byte pinCLK = D5;
+
 
 /*!
 
@@ -210,5 +207,24 @@ void spi_write_read(uint8_t *TxData, uint8_t TXlen, uint8_t *rx_data, uint8_t RX
 bool LTC6804_SetVUVVOV(float VUV, float VOV,  uint8_t cfg[8]);
 
 float cell_compute_soc(float voc);
+
+class LTC68041
+   {
+    public:
+		void helloworld();
+		explicit LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin);
+		
+		byte csPin = D8;
+		byte pinMOSI = D7;
+		byte pinMISO = D6;
+		byte pinCLK = D5;
+		
+    protected:
+
+    private:
+    	//internal variables
+		byte index;
+   };
+
 
 #endif

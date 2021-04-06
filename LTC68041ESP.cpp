@@ -25,7 +25,7 @@ uint8_t  SizeConfigReg = 6; //Len Conifiguration Register = 6
 uint8_t  SizeStatusRegA = 6; //Len Conifiguration Register = 6
 uint8_t  SizeStatusRegB = 6; //Len Conifiguration Register = 6
 uint8_t  PEClen = 2;		//Len PEC Bytes = 2
-
+uint8_t LTC6804_CS;
 /*!
   \brief This function will initialize all 6804 variables and the SPI port.
 
@@ -1714,4 +1714,20 @@ float cell_compute_soc(float voc) {
     Serial.print(result);
     return result;
 }
+
+void LTC68041::helloworld()
+{
+	Serial.print("Hello World");
+}
+
+LTC68041::LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin)
+ {
+	Serial.print("Objekt angelegt");
+	LTC6804_CS=csPin;
+	pinMode(pinMOSI, OUTPUT);
+  	pinMode(pinMISO, INPUT);
+  	pinMode(pinCLK, OUTPUT);
+  	pinMode(csPin, OUTPUT);
+ }
+
 
