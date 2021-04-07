@@ -26,25 +26,7 @@ uint8_t  SizeStatusRegA = 6; //Len Conifiguration Register = 6
 uint8_t  SizeStatusRegB = 6; //Len Conifiguration Register = 6
 uint8_t  PEClen = 2;		//Len PEC Bytes = 2
 uint8_t LTC6804_CS;
-/*!
-  \brief This function will initialize all 6804 variables and the SPI port.
 
-  This function will initialize the Linduino to communicate with the LTC6804 with a 1MHz SPI clock.
-  The Function also intializes the ADCV and ADAX commands to convert all cell and GPIO voltages in
-  the Normal ADC mode.
-*/
-void LTC6804_initialize()
-{
-  //quikeval_SPI_connect();
-  //spi_enable(SPI_CLOCK_DIV128); //CHANGED: This will set the ESP to have a 1MHz Clock 
-  SPI.setBitOrder(MSBFIRST);
-  SPI.setDataMode(SPI_MODE3);
-  SPI.setClockDivider(SPI_CLOCK_DIV128);
-  SPI.begin();
-  
-  
-  set_adc(MD_NORMAL,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
-}
 
 /*!*******************************************************************************************************************
  \brief Maps  global ADC control variables to the appropriate control bytes for each of the different ADC commands
@@ -116,7 +98,7 @@ void LTC6804_adcv()
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
   //3
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
   digitalWrite(LTC6804_CS, LOW);
@@ -150,7 +132,7 @@ void LTC6804_adcv_test1()
   cmd[3] = (uint8_t)(cmd_pec);
   
   //3
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
   digitalWrite(LTC6804_CS, LOW);
@@ -184,7 +166,7 @@ void LTC6804_adcv_test2()
   cmd[3] = (uint8_t)(cmd_pec);
   
   //3
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
   digitalWrite(LTC6804_CS, LOW);
@@ -226,7 +208,7 @@ void LTC6804_checkSPI()
   Serial.print(" ");
   Serial.print(cmd[3], HEX);
 
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   digitalWrite(LED_BUILTIN, HIGH);
   digitalWrite(LTC6804_CS, LOW);
   SPI.transfer(cmd[0]);  
@@ -277,7 +259,7 @@ bool LTC6804_checkSPI_mute()
   cmd[3] = 0x0A;
 
 
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   digitalWrite(LTC6804_CS, LOW);
   SPI.transfer(cmd[0]);  
@@ -342,7 +324,7 @@ bool LTC6804_rdstatus_debug()
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   digitalWrite(LTC6804_CS, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
@@ -441,7 +423,7 @@ float  LTC6804_rditemp()
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   spi_write_read(cmd, 4, response, (SizeStatusRegA+PEClen));         //Read the configuration data of all ICs on the daisy chain into
 
@@ -504,7 +486,7 @@ float LTC6804_rditemp2()
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   spi_write_read(cmd,4,response,16);
   
   //Übertrage der eigentlichen Payload ohne CRC
@@ -572,7 +554,7 @@ void LTC6804_adax()
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   digitalWrite(LTC6804_CS, LOW);
   spi_write_array(4,cmd);
   digitalWrite(LTC6804_CS, HIGH);;
@@ -970,7 +952,7 @@ void LTC6804_rdcv_reg(uint8_t reg, //Determines which cell voltage register is r
   cmd[3] = (uint8_t)(cmd_pec);
 
   //3
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
 
@@ -1199,7 +1181,7 @@ void LTC6804_rdaux_reg(uint8_t reg, //Determines which GPIO voltage register is 
   cmd[3] = (uint8_t)(cmd_pec);
 
   //3
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
   //4
   digitalWrite(LTC6804_CS, LOW);
   spi_write_read(cmd,4,data,(REG_LEN*total_ic));
@@ -1244,7 +1226,7 @@ void LTC6804_clrcell()
   cmd[3] = (uint8_t)(cmd_pec );
 
   //3
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
   digitalWrite(LTC6804_CS, LOW);
@@ -1291,7 +1273,7 @@ void LTC6804_clraux()
   cmd[3] = (uint8_t)(cmd_pec);
 
   //3
-  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
+  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
   //4
   digitalWrite(LTC6804_CS, LOW);
   spi_write_read(cmd,4,0,0);
@@ -1431,7 +1413,7 @@ void LTC6804_wrcfg(uint8_t config[6])//A two dimensional array of the configurat
 
 
   //4
-  wakeup_idle ();                                 //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
+  //wakeup_idle ();                                 //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
   //5
   digitalWrite(LTC6804_CS, LOW);
   spi_write_array(CMD_LEN, cmd);
@@ -1497,7 +1479,7 @@ int8_t LTC6804_rdcfg(uint8_t r_config[8]) //A two dimensional array that the fun
 	cmd[3] = 0x0A;
 	
 	//2
-	wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+	//wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 	//3
 	digitalWrite(LTC6804_CS, LOW);
 	spi_write_read(cmd, 4, rx_data, (BYTES_IN_REG));         //Read the configuration data of all ICs on the daisy chain into
@@ -1544,18 +1526,7 @@ int8_t LTC6804_rdcfg(uint8_t r_config[8]) //A two dimensional array that the fun
 
 */
 
-/*!****************************************************
-  \brief Wake isoSPI up from idle state
- Generic wakeup commannd to wake isoSPI up out of idle
- *****************************************************/
-void wakeup_idle()
-{
-  digitalWrite(LTC6804_CS, LOW);
-  delay(2); //Guarantees the isoSPI will be in ready mode
-  //SPI.transfer(dummy);  //Test
-  digitalWrite(LTC6804_CS, HIGH);
-  delay(2); //Guarantees the isoSPI will be in ready mode
-}
+
 
 /*!****************************************************
   \brief Wake the LTC6804 from the sleep state
@@ -1731,3 +1702,42 @@ LTC68041::LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin)
  }
 
 
+
+/*******************************************************************************************************
+Reads and parses the LTC6804 cell voltage registers.
+
+This function will initialize all 6804 variables and the SPI port.
+  
+*********************************************************************************************************/
+void LTC68041::initialize()
+{
+  SPI.setBitOrder(MSBFIRST);
+  SPI.setDataMode(SPI_MODE3);
+  SPI.setClockDivider(SPI_CLOCK_DIV128);
+  SPI.begin();
+  set_adc(MD_NORMAL,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
+}
+
+
+
+/*******************************************************************************************************
+Wake isoSPI up from idle state
+Generic wakeup commannd to wake isoSPI up out of idle 
+*********************************************************************************************************/
+void LTC68041::wakeup_idle()
+{
+  digitalWrite(csPin, LOW);
+  delay(2); //Guarantees the isoSPI will be in ready mode
+  //SPI.transfer(dummy);  //Test
+  digitalWrite(csPin, HIGH);
+  delay(2); //Guarantees the isoSPI will be in ready mode
+}
+
+
+/*******************************************************************************************************
+  
+*********************************************************************************************************/
+
+/*******************************************************************************************************
+  
+*********************************************************************************************************/

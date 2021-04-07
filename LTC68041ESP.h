@@ -194,8 +194,6 @@ float LTC6804_rditemp2();
 
 int8_t LTC6804_rdcfg(uint8_t r_config[8]);
 
-void wakeup_idle();
-
 void wakeup_sleep();
 
 uint16_t pec15_calc(uint8_t len, uint8_t *data);
@@ -211,19 +209,25 @@ float cell_compute_soc(float voc);
 class LTC68041
    {
     public:
-		void helloworld();
 		explicit LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin);
+		void helloworld();
+		void initialize();
+		void wakeup_idle();
 		
 		byte csPin = D8;
 		byte pinMOSI = D7;
 		byte pinMISO = D6;
-		byte pinCLK = D5;
+		byte pinCLK = D5;		
+		
+		
+
 		
     protected:
 
     private:
     	//internal variables
 		byte index;
+
    };
 
 
