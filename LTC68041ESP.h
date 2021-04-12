@@ -213,7 +213,11 @@ class LTC68041
 		void helloworld();
 		void initialize();
 		void wakeup_idle();
-		
+		uint16_t pec15_calc(uint8_t len, uint8_t *data);
+		void spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_data, uint8_t rx_len);
+		void spi_write_array(uint8_t len, uint8_t data[]);
+		bool SetVUVVOV(float Undervoltage, float Overvoltage, uint8_t cfg[8]);
+
 		byte csPin = D8;
 		byte pinMOSI = D7;
 		byte pinMISO = D6;
