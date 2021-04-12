@@ -25,7 +25,7 @@ uint8_t  SizeConfigReg = 6; //Len Conifiguration Register = 6
 uint8_t  SizeStatusRegA = 6; //Len Conifiguration Register = 6
 uint8_t  SizeStatusRegB = 6; //Len Conifiguration Register = 6
 uint8_t  PEClen = 2;		//Len PEC Bytes = 2
-uint8_t LTC6804_CS;
+uint8_t csPin;
 
 
 /*!*******************************************************************************************************************
@@ -101,9 +101,9 @@ void LTC6804_adcv()
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   spi_write_array(4,cmd);
-  digitalWrite(LTC6804_CS,HIGH);
+  digitalWrite(csPin,HIGH);
 
 }
 
@@ -135,9 +135,9 @@ void LTC6804_adcv_test1()
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   spi_write_array(4,cmd);
-  digitalWrite(LTC6804_CS,HIGH);
+  digitalWrite(csPin,HIGH);
 }
 
 
@@ -169,9 +169,9 @@ void LTC6804_adcv_test2()
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   spi_write_array(4,cmd);
-  digitalWrite(LTC6804_CS,HIGH);
+  digitalWrite(csPin,HIGH);
 }
 
 
@@ -210,7 +210,7 @@ void LTC6804_checkSPI()
 
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   digitalWrite(LED_BUILTIN, HIGH);
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
   SPI.transfer(cmd[2]);  
@@ -219,7 +219,7 @@ void LTC6804_checkSPI()
   {
     response[i] =SPI.transfer(0); 
   }
-  digitalWrite(LTC6804_CS, HIGH);
+  digitalWrite(csPin, HIGH);
   digitalWrite(LED_BUILTIN, LOW);  
   Serial.print("\nRSP: ");
   for(int i=0; i<(SizeConfigReg+PEClen);i++)
@@ -261,7 +261,7 @@ bool LTC6804_checkSPI_mute()
 
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
   SPI.transfer(cmd[2]);  
@@ -270,7 +270,7 @@ bool LTC6804_checkSPI_mute()
   {
     response[i] =SPI.transfer(0); 
   }
-  digitalWrite(LTC6804_CS, HIGH);
+  digitalWrite(csPin, HIGH);
 
 
   response_pec_calc = pec15_calc(SizeConfigReg, response);
@@ -306,13 +306,13 @@ bool LTC6804_rdstatus_debug()
   cmd_pec = pec15_calc(2, cmd);
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
   SPI.transfer(cmd[2]);  
   SPI.transfer(cmd[3]);
 
-  digitalWrite(LTC6804_CS, HIGH);
+  digitalWrite(csPin, HIGH);
 // spi_write_array(uint8_t len, uint8_t data[])
 	
   delay(10); //wait for conversion
@@ -325,7 +325,7 @@ bool LTC6804_rdstatus_debug()
   cmd[3] = (uint8_t)(cmd_pec);
 
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
   SPI.transfer(cmd[2]);  
@@ -335,7 +335,7 @@ bool LTC6804_rdstatus_debug()
   {
     response[i] =SPI.transfer(1); 
   }
-  digitalWrite(LTC6804_CS, HIGH);
+  digitalWrite(csPin, HIGH);
 
   
   Serial.print("\nRSP Status A: ");
@@ -405,13 +405,13 @@ float  LTC6804_rditemp()
   //spi_write_read(cmd,4,data,(REG_LEN*total_ic));
   
   
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
   SPI.transfer(cmd[2]);  
   SPI.transfer(cmd[3]);
 
-  digitalWrite(LTC6804_CS, HIGH);
+  digitalWrite(csPin, HIGH);
 // spi_write_array(uint8_t len, uint8_t data[])
 	
   delay(10); //wait for conversion
@@ -555,9 +555,9 @@ void LTC6804_adax()
   cmd[3] = (uint8_t)(cmd_pec);
 
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   spi_write_array(4,cmd);
-  digitalWrite(LTC6804_CS, HIGH);;
+  digitalWrite(csPin, HIGH);;
 
 }
 /*
@@ -1183,9 +1183,9 @@ void LTC6804_rdaux_reg(uint8_t reg, //Determines which GPIO voltage register is 
   //3
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
   //4
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-  digitalWrite(LTC6804_CS, HIGH);;
+  digitalWrite(csPin, HIGH);;
 
 }
 /*
@@ -1229,9 +1229,9 @@ void LTC6804_clrcell()
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   spi_write_read(cmd,4,0,0);
-  digitalWrite(LTC6804_CS, HIGH);;
+  digitalWrite(csPin, HIGH);;
 }
 /*
   LTC6804_clrcell Function sequence:
@@ -1275,9 +1275,9 @@ void LTC6804_clraux()
   //3
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
   //4
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   spi_write_read(cmd,4,0,0);
-  digitalWrite(LTC6804_CS, HIGH);;
+  digitalWrite(csPin, HIGH);;
 }
 /*
   LTC6804_clraux Function sequence:
@@ -1415,9 +1415,9 @@ void LTC6804_wrcfg(uint8_t config[6])//A two dimensional array of the configurat
   //4
   //wakeup_idle ();                                 //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
   //5
-  digitalWrite(LTC6804_CS, LOW);
+  digitalWrite(csPin, LOW);
   spi_write_array(CMD_LEN, cmd);
-  digitalWrite(LTC6804_CS, HIGH);;
+  digitalWrite(csPin, HIGH);;
   free(cmd);
 }
 /*
@@ -1431,115 +1431,10 @@ void LTC6804_wrcfg(uint8_t config[6])//A two dimensional array of the configurat
 
 */
 
-/*!******************************************************
- \brief Reads configuration registers of a LTC6804 daisy chain
-
-@param[in] uint8_t total_ic: number of ICs in the daisy chain
-
-@param[out] uint8_t r_config[][8] is a two dimensional array that the function stores the read configuration data. The configuration data for each IC
-is stored in blocks of 8 bytes with the configuration data of the lowest IC on the stack in the first 8 bytes
-block of the array, the second IC in the second 8 byte etc. Below is an table illustrating the array organization:
-
-|r_config[0][0]|r_config[0][1]|r_config[0][2]|r_config[0][3]|r_config[0][4]|r_config[0][5]|r_config[0][6]  |r_config[0][7] |r_config[1][0]|r_config[1][1]|  .....    |
-|--------------|--------------|--------------|--------------|--------------|--------------|----------------|---------------|--------------|--------------|-----------|
-|IC1 CFGR0     |IC1 CFGR1     |IC1 CFGR2     |IC1 CFGR3     |IC1 CFGR4     |IC1 CFGR5     |IC1 PEC High    |IC1 PEC Low    |IC2 CFGR0     |IC2 CFGR1     |  .....    |
-
-
-@return int8_t, PEC Status.
-
-  0: Data read back has matching PEC
-
-  -1: Data read back has incorrect PEC
-
-
-Command Code:
--------------
-
-|CMD[0:1]   |  15   |  14   |  13   |  12   |  11   |  10   |   9   |   8   |   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
-|---------------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|
-|RDCFG:         |   0   |   0   |   0   |   0   |   0   |   0   |   0   |   0   |   0   |   0   |   0   |   1   |   0   |   0   |   1   |   0   |
-********************************************************/
-int8_t LTC6804_rdcfg(uint8_t r_config[8]) //A two dimensional array that the function stores the read configuration data.
-                    
-{
-	const uint8_t BYTES_IN_REG = 8;
-	
-	uint8_t cmd[4];
-	uint8_t *rx_data_pointer;
-	int8_t pec_error = 0;
-	uint16_t data_pec;
-	uint16_t received_pec;
-	
-	uint8_t rx_data[8];
-	
-	//1
-	cmd[0] = 0x00;
-	cmd[1] = 0x02;
-	cmd[2] = 0x2b;
-	cmd[3] = 0x0A;
-	
-	//2
-	//wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-	//3
-	digitalWrite(LTC6804_CS, LOW);
-	spi_write_read(cmd, 4, rx_data, (BYTES_IN_REG));         //Read the configuration data of all ICs on the daisy chain into
-	digitalWrite(LTC6804_CS, HIGH);;                          //rx_data[] array
-	
-	Serial.print("gelesene Config: ");
-	for (int i = 0 ; i < 8; i++)
-	{
-		Serial.print(rx_data[i], HEX);
-		Serial.print("\t");
-	}
-	Serial.print("\n");
-		
-	//into the r_config array as well as check the received Config data
-	//for any bit errors
-	//4.a
-	for (uint8_t current_byte = 0; current_byte < BYTES_IN_REG; current_byte++)
-	{
-	  r_config[current_byte] = rx_data[current_byte + (BYTES_IN_REG)];
-	}
-	//4.b
-	received_pec = (r_config[6]<<8) + r_config[7];
-	data_pec = pec15_calc(6, &r_config[0]);
-	if (received_pec != data_pec)
-	{
-	  pec_error = -1;
-	}
-	
-
-	
-	//5
-	return(pec_error);
-}
-/*
-  RDCFG Sequence:
-
-  1. Load cmd array with the write configuration command and PEC
-  2. wakeup isoSPI port, this step can be removed if isoSPI status is previously guaranteed
-  3. Send command and read back configuration data
-  4. For each LTC6804 in the daisy chain
-    a. load configuration data into r_config array
-    b. calculate PEC of received data and compare against calculated PEC
-  5. Return PEC Error
-
-*/
 
 
 
-/*!****************************************************
-  \brief Wake the LTC6804 from the sleep state
 
- Generic wakeup commannd to wake the LTC6804 from sleep
- *****************************************************/
-void wakeup_sleep()
-{
-  digitalWrite(LTC6804_CS, LOW);
-  delay(1); // Guarantees the LTC6804 will be in standby
-  //SPI.transfer(dummy);   //Test
-  digitalWrite(LTC6804_CS, HIGH);;
-}
 /*!**********************************************************
  \brief calaculates  and returns the CRC15
 
@@ -1550,20 +1445,7 @@ void wakeup_sleep()
 
   @returns The calculated pec15 as an unsigned int
 ***********************************************************/
-uint16_t pec15_calc(uint8_t len, //Number of bytes that will be used to calculate a PEC
-                    uint8_t *data //Array of data that will be used to calculate  a PEC
-                   )
-{
-  uint16_t remainder,addr;
 
-  remainder = 16;//initialize the PEC
-  for (uint8_t i = 0; i<len; i++) // loops for each byte in data array
-  {
-    addr = ((remainder>>7)^data[i])&0xff;//calculate PEC table address
-    remainder = (remainder<<8)^crc15Table[addr];
-  }
-  return(remainder*2);//The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
-}
 
 
 /*!
@@ -1573,71 +1455,11 @@ uint16_t pec15_calc(uint8_t len, //Number of bytes that will be used to calculat
  @param[in] uint8_t data[] the data array to be written on the SPI port
 
 */
-void spi_write_array(uint8_t len, // Option: Number of bytes to be written on the SPI port
-                     uint8_t data[] //Array of bytes to be written on the SPI port
-                    )
-{
-  for (uint8_t i = 0; i < len; i++)
-  {
-    SPI.transfer((int8_t)data[i]);
-  }
-}
-
-/*!
- \brief Writes and read a set number of bytes using the SPI port.
-
-@param[in] uint8_t tx_data[] array of data to be written on the SPI port
-@param[in] uint8_t tx_len length of the tx_data array
-@param[out] uint8_t rx_data array that read data will be written too.
-@param[in] uint8_t rx_len number of bytes to be read from the SPI port.
-
-*/
-
-void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
-                    uint8_t tx_len, //length of the tx data arry
-                    uint8_t *rx_data,//Input: array that will store the data read by the SPI port
-                    uint8_t rx_len //Option: number of bytes to be read from the SPI port
-                   )
-{
-  digitalWrite(LTC6804_CS, LOW);
-  for (uint8_t i = 0; i < tx_len; i++)
-  {
-    SPI.transfer(tx_Data[i]);
-  }
-  for (uint8_t i = 0; i < rx_len; i++)
-  {
-    rx_data[i]=SPI.transfer(1);
-  }
-  digitalWrite(LTC6804_CS, HIGH);
-}
-
-bool LTC6804_SetVUVVOV(float Undervoltage, float Overvoltage, uint8_t cfg[8])
-{
-  //float Undervoltage=3.123;
-  //float Overvoltage=3.923;
-  uint16_t VUV=0;
-  uint16_t VOV=0;
-
-  VUV=(Undervoltage/(0.0001*16))-1;
-  VOV=(Overvoltage/(0.0001*16));
-
-  //Serial.print("\nVUV:");
-  //Serial.print(VUV, HEX);
-  //Serial.print("\nVOV:");
-  //Serial.print(VOV, HEX);
-  //Serial.print("\n"); 
 
 
-  
-  cfg[0] = 0xFE;
-  cfg[1] = (uint8_t) VUV;        //0x4E1 ; // 2.0V
-  cfg[2] = (VUV >> 8) & 0x0F ;
-  cfg[2] = cfg[2] | ((VOV&0x0F) << 4) ;
-  cfg[3] = (uint8_t)(VOV>>4) ;
-  //cfg[4] = 0x00 ; // discharge switches  0->off  1-> on.  S0 = 0x01, S1 = 0x02, S2 = 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
-  //cfg[5] = 0x00 ;
- 
-}
+
+
+
 
 /***              Public Functions              ***/
 
@@ -1694,7 +1516,6 @@ void LTC68041::helloworld()
 LTC68041::LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin)
  {
 	Serial.print("Objekt angelegt");
-	LTC6804_CS=csPin;
 	pinMode(pinMOSI, OUTPUT);
   	pinMode(pinMISO, INPUT);
   	pinMode(pinCLK, OUTPUT);
@@ -1732,6 +1553,165 @@ void LTC68041::wakeup_idle()
   digitalWrite(csPin, HIGH);
   delay(2); //Guarantees the isoSPI will be in ready mode
 }
+
+
+/*******************************************************************************************************
+Calculates the CRC sum of some data bytes given by the pointer "data" with the length "len"
+*********************************************************************************************************/
+uint16_t LTC68041::pec15_calc(uint8_t len, //Number of bytes that will be used to calculate a PEC
+                    uint8_t *data //Array of data that will be used to calculate  a PEC
+                   )
+{
+  uint16_t remainder,addr;
+
+  remainder = 16;//initialize the PEC
+  for (uint8_t i = 0; i<len; i++) // loops for each byte in data array
+  {
+    addr = ((remainder>>7)^data[i])&0xff;//calculate PEC table address
+    remainder = (remainder<<8)^crc15Table[addr];
+  }
+  return(remainder*2);//The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
+}
+
+
+/*******************************************************************************************************
+Writes and read a set number of bytes using the SPI port.
+[in] uint8_t tx_data[] array of data to be written on the SPI port
+[in] uint8_t tx_len length of the tx_data array
+[out] uint8_t rx_data array that read data will be written too.
+[in] uint8_t rx_len number of bytes to be read from the SPI port.
+*********************************************************************************************************/
+void LTC68041::spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
+                    uint8_t tx_len, //length of the tx data arry
+                    uint8_t *rx_data,//Input: array that will store the data read by the SPI port
+                    uint8_t rx_len //Option: number of bytes to be read from the SPI port
+                   )
+{
+  digitalWrite(csPin, LOW);
+  for (uint8_t i = 0; i < tx_len; i++)
+  {
+    SPI.transfer(tx_Data[i]);
+  }
+  for (uint8_t i = 0; i < rx_len; i++)
+  {
+    rx_data[i]=SPI.transfer(1);
+  }
+  digitalWrite(csPin, HIGH);
+}
+
+/*******************************************************************************************************
+Writes and read a set number of bytes using the SPI port without expecting an answer
+*********************************************************************************************************/
+void LTC68041::spi_write_array(uint8_t len, // Option: Number of bytes to be written on the SPI port
+                     uint8_t data[] //Array of bytes to be written on the SPI port
+                    )
+{
+  for (uint8_t i = 0; i < len; i++)
+  {
+    SPI.transfer((int8_t)data[i]);
+  }
+}
+
+
+/*******************************************************************************************************
+calculates the bitpattern in the config for Overvoltage and Undervoltage detection  
+the config has to be written to the chip after this!
+*********************************************************************************************************/
+bool LTC68041::SetVUVVOV(float Undervoltage, float Overvoltage, uint8_t cfg[8])
+{
+  //float Undervoltage=3.123;
+  //float Overvoltage=3.923;
+  uint16_t VUV=0;
+  uint16_t VOV=0;
+
+  VUV=(Undervoltage/(0.0001*16))-1;		//calc bitpattern for UV 
+  VOV=(Overvoltage/(0.0001*16));		//Calc bitpattern for OV 
+  
+  cfg[0] = 0xFE;
+  cfg[1] = (uint8_t) VUV;        //0x4E1 ; // 2.0V
+  cfg[2] = (VUV >> 8) & 0x0F ;
+  cfg[2] = cfg[2] | ((VOV&0x0F) << 4) ;
+  cfg[3] = (uint8_t)(VOV>>4) ;
+ 
+}
+
+/*******************************************************************************************************
+Reads configuration registers of a LTC6804
+
+[out] uint8_t r_config[8] is an array that the function stores the read configuration data. 
+
+return int8_t, PEC Status.
+  0: Data read back has matching PEC
+  -1: Data read back has incorrect PEC
+  
+Giving additional Debug infos via Serial
+*********************************************************************************************************/
+
+int8_t LTC6804_rdcfg_debug(uint8_t r_config[8]) //A two dimensional array that the function stores the read configuration data.
+                    
+{
+	const uint8_t BYTES_IN_REG = 8;
+	
+	uint8_t cmd[4];
+	uint8_t *rx_data_pointer;
+	int8_t pec_error = 0;
+	uint16_t data_pec;
+	uint16_t received_pec;
+	
+	uint8_t rx_data[8];
+	
+	//1
+	cmd[0] = 0x00;
+	cmd[1] = 0x02;
+	cmd[2] = 0x2b;
+	cmd[3] = 0x0A;
+	
+	//2
+	//wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+	//3
+	digitalWrite(csPin, LOW);
+	spi_write_read(cmd, 4, rx_data, (BYTES_IN_REG));         //Read the configuration data of all ICs on the daisy chain into
+	digitalWrite(csPin, HIGH);;                          //rx_data[] array
+	
+	Serial.print("gelesene Config: ");
+	for (int i = 0 ; i < 8; i++)
+	{
+		Serial.print(rx_data[i], HEX);
+		Serial.print("\t");
+	}
+	Serial.print("\n");
+		
+	//into the r_config array as well as check the received Config data
+	//for any bit errors
+	//4.a
+	for (uint8_t current_byte = 0; current_byte < BYTES_IN_REG; current_byte++)
+	{
+	  r_config[current_byte] = rx_data[current_byte + (BYTES_IN_REG)];
+	}
+	//4.b
+	received_pec = (r_config[6]<<8) + r_config[7];
+	data_pec = pec15_calc(6, &r_config[0]);
+	if (received_pec != data_pec)
+	{
+	  pec_error = -1;
+	}
+	
+
+	
+	//5
+	return(pec_error);
+}
+/*
+  RDCFG Sequence:
+
+
+*/
+
+
+
+/*******************************************************************************************************
+  
+*********************************************************************************************************/
 
 
 /*******************************************************************************************************
