@@ -16,36 +16,8 @@ https://github.com/jontubs/EasyBMS
 //#endif
 
 
-/*
-  Pre computed crc15 table used for the LTC6804 PEC calculation
+#define CELLNUM 12
 
-  The code used to generate the crc15 table is:
-
-void generate_crc15_table()
-{
-  int remainder;
-  for(int i = 0; i<256;i++)
-  {
-    remainder =  i<< 7;
-    for (int bit = 8; bit > 0; --bit)
-        {
-
-           if ((remainder & 0x4000) > 0)//equivalent to remainder & 2^14 simply check for MSB
-            {
-                remainder = ((remainder << 1)) ;
-                remainder = (remainder ^ 0x4599);
-           }
-           else
-            {
-               remainder = ((remainder << 1));
-            }
-       }
-
-    crc15Table[i] = remainder&0xFFFF;
-
-  }
-}
-*/
 
 static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //!<precomputed CRC15 Table
     0xff35, 0x2cc8, 0xe951, 0xe263, 0x27fa, 0xad97, 0x680e, 0x633c, 0xa6a5, 0x7558, 0xb0c1,
@@ -145,66 +117,9 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 #define DCP_DISABLED 0
 #define DCP_ENABLED 1
 
-#define CellNum 12 //Anzahl an Zellen
 
 
-void LTC6804_initialize();
-//			ADC Modespeed , Discharge permit, cell selection, gpio selection
-void set_adc(uint8_t MD, uint8_t DCP, uint8_t CH, uint8_t CHG);
 
-void LTC6804_adcv();
-
-void LTC6804_adcv_test1();
-
-void LTC6804_adcv_test2();
-
-void LTC6804_adax();
-
-void LTC6804_checkSPI();
-
-bool LTC6804_checkSPI_mute();
-
-bool LTC6804_rdstatus_debug();
-
-float LTC6804_convertITMP(uint16_t ITMP, float offset);
-
-double LTC6804_convertV(uint16_t v);
-
-uint8_t LTC6804_rdcv(uint16_t cell_codes[12]);
-
-uint8_t LTC6804_rdcv_debug(uint16_t cell_codes[12]);
-
-void LTC6804_rdcv_reg(uint8_t reg, uint8_t *data);
-
-int8_t LTC6804_rdaux(uint8_t reg, uint8_t nIC, uint16_t aux_codes[][6]);
-
-void LTC6804_rdaux_reg(uint8_t reg, uint8_t nIC,uint8_t *data);
-
-void LTC6804_clrcell();
-
-void LTC6804_clraux();
-
-void LTC6804_balance_cfg(int cell, uint8_t cfg[6]);
-
-void LTC6804_wrcfg(uint8_t config[6]);
-
-float LTC6804_rditemp();
-
-float LTC6804_rditemp2();
-
-int8_t LTC6804_rdcfg(uint8_t r_config[8]);
-
-void wakeup_sleep();
-
-uint16_t pec15_calc(uint8_t len, uint8_t *data);
-
-void spi_write_array( uint8_t length, uint8_t *data);
-
-void spi_write_read(uint8_t *TxData, uint8_t TXlen, uint8_t *rx_data, uint8_t RXlen);
-
-bool LTC6804_SetVUVVOV(float VUV, float VOV,  uint8_t cfg[8]);
-
-float cell_compute_soc(float voc);
 
 class LTC68041
    {
@@ -217,13 +132,43 @@ class LTC68041
 		void spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_data, uint8_t rx_len);
 		void spi_write_array(uint8_t len, uint8_t data[]);
 		bool SetVUVVOV(float Undervoltage, float Overvoltage, uint8_t cfg[8]);
-
+		int8_t rdcfg_debug(uint8_t r_config[8]);
+		void balance_cfg(int cell, uint8_t cfg[6]);
+		void wrcfg(uint8_t config[6]);
+		float cell_compute_soc(float voc);
+		void clraux();
+		uint8_t rdcv(uint16_t cell_codes[CELLNUM]);
+		void clrcell();
+		void rdaux_reg(uint8_t reg, uint8_t *data);	
+		void set_adc(uint8_t MD, uint8_t DCP, uint8_t CH, uint8_t CHG);
+		void checkSPI();
+		bool checkSPI_mute();
+		int8_t rdaux(uint8_t reg, uint16_t aux_codes[6]);
+		void adcv();
+		void adcv_test1();
+		void adcv_test2();
+		bool rdstatus_debug();
+		float  rditemp_debug();
+		double convertV(uint16_t v); 
+		void adax();
+		float convertITMP(uint16_t ITMP, float offset);
+		uint8_t rdcv_debug(uint16_t cell_codes[CELLNUM]);
+		
+		
+		
 		byte csPin = D8;
 		byte pinMOSI = D7;
 		byte pinMISO = D6;
 		byte pinCLK = D5;		
-		
-		
+		byte CellNum = CELLNUM;  //Number of cells checked by this Chip
+		uint8_t ADCV[2]; //!< Cell Voltage conversion command.
+		uint8_t ADAX[2]; //!< GPIO conversion command.
+		uint8_t dummy = 0x55;
+		uint8_t  SizeConfigReg = 6; //Len Conifiguration Register = 6
+		uint8_t  SizeStatusRegA = 6; //Len Conifiguration Register = 6
+		uint8_t  SizeStatusRegB = 6; //Len Conifiguration Register = 6
+		uint8_t  PEClen = 2;		//Len PEC Bytes = 2
+
 
 		
     protected:
