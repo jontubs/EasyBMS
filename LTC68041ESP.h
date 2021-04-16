@@ -133,11 +133,21 @@ class LTC68041
 		uint8_t ADCV[2]; //!< Cell Voltage conversion command.
 		uint8_t ADAX[2]; //!< GPIO conversion command.
 		uint8_t dummy = 0x55;
-		uint8_t  SizeConfigReg = 6; //Len Conifiguration Register = 6
-		uint8_t  SizeStatusRegA = 6; //Len Conifiguration Register = 6
-		uint8_t  SizeStatusRegB = 6; //Len Conifiguration Register = 6
-		uint8_t  PEClen = 2;		//Len PEC Bytes = 2   	
-    	
+		uint8_t SizeConfigReg = 6; //Len Conifiguration Register = 6
+		uint8_t SizeStatusRegA = 6; //Len Conifiguration Register = 6
+		uint8_t SizeStatusRegB = 6; //Len Conifiguration Register = 6
+		uint8_t PEClen = 2;		//Len PEC Bytes = 2   	
+		uint8_t CFGR[8];		//Configuration Register Group
+		uint8_t	CVAR[8];		//Cell Voltage Register Group A
+		uint8_t	CVBR[8];		//Cell Voltage Register Group B
+		uint8_t	CVCR[8];		//Cell Voltage Register Group C
+		uint8_t	CVDR[8];		//Cell Voltage Register Group D
+		uint8_t	AVAR[8];		//Auxiliary Register Group A
+		uint8_t	AVBR[8];		//Auxiliary Register Group B
+		uint8_t	STAR[8];		//Status Register Group A
+		uint8_t	STBR[8];		//Status Register Group B
+
+
     	
 		explicit LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin);
 		void helloworld();
@@ -165,11 +175,12 @@ class LTC68041
 		void adcv_test2();
 		bool rdstatus_debug();
 		float  rditemp_debug();
+		float  rditemp();
 		double convertV(uint16_t v); 
 		void adax();
-		float convertITMP(uint16_t ITMP, float offset);
+		float convertITMP(uint8_t STAR[6], float offset);
 		uint8_t rdcv_debug(uint16_t cell_codes[CellNum]);
-
+		uint8_t rdstar();  
 		
 		
 
@@ -184,5 +195,5 @@ class LTC68041
 
    };
 
-
+void printArray(uint8_t size, uint8_t *data);
 #endif

@@ -27,7 +27,6 @@ LTC68041::LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin)
 }
 
 
-
 /*******************************************************************************************************
 Reads and parses the LTC6804 cell voltage registers.
 This function will initialize all 6804 variables and the SPI port.
@@ -40,7 +39,6 @@ void LTC68041::initialize()
   SPI.begin();
   set_adc(MD_NORMAL,DCP_DISABLED,CELL_CH_ALL,AUX_CH_ALL);
 }
-
 
 
 /*******************************************************************************************************
@@ -59,7 +57,6 @@ void LTC68041::helloworld()
 }
 
 
-
 /*******************************************************************************************************
 Wake isoSPI up from idle state
 Generic wakeup commannd to wake isoSPI up out of idle 
@@ -72,7 +69,6 @@ void LTC68041::wakeup_idle()
   digitalWrite(csPin, HIGH);
   delay(2); //Guarantees the isoSPI will be in ready mode
 }
-
 
 
 /*******************************************************************************************************
@@ -90,7 +86,6 @@ uint16_t LTC68041::pec15_calc(uint8_t len, uint8_t *data)
   }
   return(remainder*2);//The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
 }
-
 
 
 /*******************************************************************************************************
@@ -114,6 +109,7 @@ void LTC68041::spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_dat
   digitalWrite(csPin, HIGH);
 }
 
+
 /*******************************************************************************************************
 Writes and read a set number of bytes using the SPI port without expecting an answer
 uint8_t len, // Option: Number of bytes to be written on the SPI port
@@ -126,7 +122,6 @@ void LTC68041::spi_write_array(uint8_t len, uint8_t data[] )
     SPI.transfer((int8_t)data[i]);
   }
 }
-
 
 
 /*******************************************************************************************************
@@ -150,7 +145,6 @@ bool LTC68041::SetVUVVOV(float Undervoltage, float Overvoltage, uint8_t cfg[8])
   cfg[3] = (uint8_t)(VOV>>4) ;
  
 }
-
 
 
 /********************************************************************************************************
@@ -219,7 +213,6 @@ int8_t LTC68041::rdcfg_debug(uint8_t r_config[8]) //An array that the function s
 }
 
 
-
 /*******************************************************************************************************
 Sets  the configuration array for cell balancing
   1. Reset all Discharge Pins
@@ -245,7 +238,6 @@ void LTC68041::balance_cfg(int cell, uint8_t cfg[6])
     }
     Serial.print("\n"); 
 }
-
 
 
 /*******************************************************************************************************
@@ -381,7 +373,7 @@ void LTC68041::clraux()
   //4
   digitalWrite(csPin, LOW);
   spi_write_read(cmd,4,0,0);
-  digitalWrite(csPin, HIGH);;
+  digitalWrite(csPin, HIGH);
 }
 
 
@@ -397,7 +389,7 @@ Reads and parses the LTC6804 cell voltage registers.
   3. Check the PEC of the data read back vs the calculated PEC for each read register command
   4. Return pec_error flag  
 *********************************************************************************************************/
-uint8_t LTC68041::rdcv(uint16_t cell_codes[]) // Array of the parsed cell codes                  
+uint8_t LTC68041::rdcv(uint16_t cell_codes[CellNum]) // Array of the parsed cell codes                  
 {
 
   const uint8_t NUM_RX_BYT = 8;
@@ -451,6 +443,60 @@ uint8_t LTC68041::rdcv(uint16_t cell_codes[]) // Array of the parsed cell codes
 }
 
 
+/********************************************************************************************************
+ The function is used to read the of the Status Register Group A LTC6804.
+ This function will send the requested read commands parse the data
+ and store the response in STAR
+*********************************************************************************************************/
+uint8_t LTC68041::rdstar()                
+{
+
+  const uint8_t NUM_RX_BYT = 8; // number of bytes in the register + 2 bytes for the PEC
+  const uint8_t BYT_IN_REG = 6;
+
+
+  uint8_t pec_error = 0;
+  uint16_t received_pec;
+  uint8_t received_data[NUM_RX_BYT]; //data counter
+  uint16_t data_pec;
+  uint8_t data_counter=0; //data counter
+
+
+  uint8_t cmd[4];
+  uint16_t cmd_pec;
+
+  //1
+  cmd[0] = 0x00;
+  cmd[1] = 0x10;
+  //2
+  cmd_pec = pec15_calc(2, cmd);
+  cmd[2] = (uint8_t)(cmd_pec >> 8);
+  cmd[3] = (uint8_t)(cmd_pec);
+
+  //3
+  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
+  //4
+  spi_write_read(cmd,4,received_data,NUM_RX_BYT);
+
+  //5
+  data_counter= BYT_IN_REG;
+  received_pec = (received_data[data_counter] << 8) + received_data[data_counter+1]; //The received PEC for the current_ic is transmitted as the 7th and 8th
+  //(uint8_t len, uint8_t *data)
+  data_pec = pec15_calc(BYT_IN_REG, received_data);   //&received_data[NUM_RX_BYT]
+  if (received_pec != data_pec)
+  {
+    pec_error = -1;                             //The pec_error variable is simply set negative if any PEC errors
+    //are detected in the serial data
+  }
+  else
+  {
+    //Copy 	Target   	Source  	Size
+  	memcpy( STAR, received_data, BYT_IN_REG );
+  }
+  printArray(NUM_RX_BYT, received_data);
+  return(pec_error);
+}
+
 
 /********************************************************************************************************
  The command clears the cell voltage registers and intiallizes
@@ -485,7 +531,6 @@ void LTC68041::clrcell()
 }
 
 
-
 /********************************************************************************************************
  The function reads a single GPIO voltage register and stores thre read data
  in the *data point as a byte array. This function is rarely used outside of
@@ -499,9 +544,7 @@ void LTC68041::clrcell()
           2: Read back auxiliary group B
 [out] uint8_t *data; An array of the unparsed aux codes
 *********************************************************************************************************/
-void LTC68041::rdaux_reg(uint8_t reg, //Determines which GPIO voltage register is read back
-                       uint8_t *data //Array of the unparsed auxiliary codes
-                      )
+void LTC68041::rdaux_reg(uint8_t reg, uint8_t *data)
 {
   const uint8_t REG_LEN = 8; // number of bytes in the register + 2 bytes for the PEC
   uint8_t cmd[4];
@@ -1031,8 +1074,7 @@ float  LTC68041::rditemp_debug()
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-
+ 	
   spi_write_read(cmd, 4, response, (SizeStatusRegA+PEClen));         //Read the configuration data of all ICs on the daisy chain into
 
   
@@ -1042,11 +1084,79 @@ float  LTC68041::rditemp_debug()
 	STAR[i]=response[i];
   }
 
-  ITMP=STAR[2] | ((uint16_t)STAR[3])<<8;
+  
+  InternalTemp=convertITMP(STAR,offset);
 
 
-  //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
-  InternalTemp= ((float)ITMP * 100E-6 / 7.5E-3 - 273.0 ) +offset;
+  response_pec_calc = pec15_calc(SizeStatusRegA, response);
+  response_pec=(response[SizeStatusRegA]<<8)+response[SizeStatusRegA+1];
+ 
+  
+  if(response_pec==response_pec_calc&(response_pec_calc!=0))
+  {
+  	return InternalTemp;
+  }
+  else
+  {
+  	return 5555;
+  }  
+}
+
+/********************************************************************************************************
+Starts the conversion and reads the Statusregister
+Calculates the internal Temperature
+Checks the CRC and returns the Temperature
+If itmp=5555, then CRC is wrong  
+*********************************************************************************************************/
+float  LTC68041::rditemp()
+{
+  uint16_t response_pec_calc;
+  uint16_t response_pec;			
+  uint8_t cmd[8];
+  uint8_t STAR[6];		//Status register A
+  uint8_t response[16];
+  uint16_t cmd_pec;
+  uint16_t ITMP;
+  uint8_t data[8];
+  float InternalTemp;
+  float offset=10;
+  
+  
+  //Start Status group ADC Conversion and Poll Status
+  cmd[0] = 0x5;			//ADSTAT (all)
+  cmd[1] = 0x68;		//ADSTAT (all)
+  cmd_pec = pec15_calc(2, cmd);
+  cmd[2] = (uint8_t)(cmd_pec >> 8);
+  cmd[3] = (uint8_t)(cmd_pec);
+  
+  //Send data and expect no answer yet
+  spi_write_read(cmd, 4, response, 0);       
+
+
+	
+  delay(10); //wait for conversion
+
+
+  cmd[0] = 0x00;		//Read Status Register Group A
+  cmd[1] = 0x10;		//Read Status Register Group A
+  cmd_pec = pec15_calc(2, cmd);
+  cmd[2] = (uint8_t)(cmd_pec >> 8);
+  cmd[3] = (uint8_t)(cmd_pec);
+
+ 	
+  spi_write_read(cmd, 4, response, (SizeStatusRegA+PEClen));         //Read the configuration data of all ICs on the daisy chain into
+
+  
+  //Serial.print("\nSTAR:");
+  for(int i=0; i<SizeStatusRegA;i++)
+  {
+	STAR[i]=response[i];
+  }
+
+  
+  InternalTemp=convertITMP(STAR,offset);
+
+
   response_pec_calc = pec15_calc(SizeStatusRegA, response);
   response_pec=(response[SizeStatusRegA]<<8)+response[SizeStatusRegA+1];
  
@@ -1099,12 +1209,15 @@ void LTC68041::adax()
 
 }
 
+
 /********************************************************************************************************
 Converts the raw  
 *********************************************************************************************************/
-float LTC68041::convertITMP(uint16_t ITMP, float offset)
+float LTC68041::convertITMP(uint8_t STAR[6], float offset)
 {
   float InternalTemp;
+  uint16_t ITMP;
+  ITMP=STAR[2] | ((uint16_t)STAR[3])<<8;
   //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
   InternalTemp= ((float)ITMP * 100E-6 / 7.5E-3 - 273.0 ) + offset;
   return InternalTemp;
@@ -1250,4 +1363,13 @@ void LTC68041::rdcv_reg(uint8_t reg, uint8_t *data)
 
 }
 
-
+void printArray(uint8_t size, uint8_t *data)
+{
+	Serial.print("\nArray Content | ");
+	for(int i=0;i<size;i++)
+	{
+		Serial.print(data[i]);
+		Serial.print("\t");
+	}
+	Serial.print(" |END \n");
+}
