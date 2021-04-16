@@ -16,7 +16,6 @@ https://github.com/jontubs/EasyBMS
 //#endif
 
 
-#define CELLNUM 12
 
 
 static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //!<precomputed CRC15 Table
@@ -79,6 +78,7 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 #define CELL_CH_5and11 5
 #define CELL_CH_6and12 6
 
+#define CELLNUM 12
 
 
 
@@ -124,6 +124,21 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 class LTC68041
    {
     public:
+    	
+ 		byte csPin = D8;
+		byte pinMOSI = D7;
+		byte pinMISO = D6;
+		byte pinCLK = D5;		
+		const static byte CellNum = 12;  //Number of cells checked by this Chip
+		uint8_t ADCV[2]; //!< Cell Voltage conversion command.
+		uint8_t ADAX[2]; //!< GPIO conversion command.
+		uint8_t dummy = 0x55;
+		uint8_t  SizeConfigReg = 6; //Len Conifiguration Register = 6
+		uint8_t  SizeStatusRegA = 6; //Len Conifiguration Register = 6
+		uint8_t  SizeStatusRegB = 6; //Len Conifiguration Register = 6
+		uint8_t  PEClen = 2;		//Len PEC Bytes = 2   	
+    	
+    	
 		explicit LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin);
 		void helloworld();
 		void initialize();
@@ -137,7 +152,8 @@ class LTC68041
 		void wrcfg(uint8_t config[6]);
 		float cell_compute_soc(float voc);
 		void clraux();
-		uint8_t rdcv(uint16_t cell_codes[CELLNUM]);
+		uint8_t rdcv(uint16_t cell_codes[CellNum]);
+		void rdcv_reg(uint8_t reg, uint8_t *data);
 		void clrcell();
 		void rdaux_reg(uint8_t reg, uint8_t *data);	
 		void set_adc(uint8_t MD, uint8_t DCP, uint8_t CH, uint8_t CHG);
@@ -152,22 +168,11 @@ class LTC68041
 		double convertV(uint16_t v); 
 		void adax();
 		float convertITMP(uint16_t ITMP, float offset);
-		uint8_t rdcv_debug(uint16_t cell_codes[CELLNUM]);
+		uint8_t rdcv_debug(uint16_t cell_codes[CellNum]);
+
 		
 		
-		
-		byte csPin = D8;
-		byte pinMOSI = D7;
-		byte pinMISO = D6;
-		byte pinCLK = D5;		
-		byte CellNum = CELLNUM;  //Number of cells checked by this Chip
-		uint8_t ADCV[2]; //!< Cell Voltage conversion command.
-		uint8_t ADAX[2]; //!< GPIO conversion command.
-		uint8_t dummy = 0x55;
-		uint8_t  SizeConfigReg = 6; //Len Conifiguration Register = 6
-		uint8_t  SizeStatusRegA = 6; //Len Conifiguration Register = 6
-		uint8_t  SizeStatusRegB = 6; //Len Conifiguration Register = 6
-		uint8_t  PEClen = 2;		//Len PEC Bytes = 2
+
 
 
 		

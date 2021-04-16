@@ -24,7 +24,7 @@ LTC68041::LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin)
   	pinMode(pinMISO, INPUT);
   	pinMode(pinCLK, OUTPUT);
   	pinMode(csPin, OUTPUT);
- }
+}
 
 
 
@@ -78,9 +78,7 @@ void LTC68041::wakeup_idle()
 /*******************************************************************************************************
 Calculates the CRC sum of some data bytes given by the pointer "data" with the length "len"
 *********************************************************************************************************/
-uint16_t LTC68041::pec15_calc(uint8_t len, //Number of bytes that will be used to calculate a PEC
-                    uint8_t *data //Array of data that will be used to calculate  a PEC
-                   )
+uint16_t LTC68041::pec15_calc(uint8_t len, uint8_t *data)
 {
   uint16_t remainder,addr;
 
@@ -102,11 +100,7 @@ Writes and read a set number of bytes using the SPI port.
 [out] uint8_t rx_data array that read data will be written too.
 [in] uint8_t rx_len number of bytes to be read from the SPI port.
 *********************************************************************************************************/
-void LTC68041::spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
-                    uint8_t tx_len, //length of the tx data arry
-                    uint8_t *rx_data,//Input: array that will store the data read by the SPI port
-                    uint8_t rx_len //Option: number of bytes to be read from the SPI port
-                   )
+void LTC68041::spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_data, uint8_t rx_len)
 {
   digitalWrite(csPin, LOW);
   for (uint8_t i = 0; i < tx_len; i++)
@@ -264,7 +258,7 @@ Write the LTC6804 configuration register
 
  uint8_t config[6] is an array of the configuration data that will be written.
 *********************************************************************************************************/
-void LTC6804::wrcfg(uint8_t config[6])//A two dimensional array of the configuration data that will be written
+void LTC68041::wrcfg(uint8_t config[6])//A two dimensional array of the configuration data that will be written
 {
   const uint8_t BYTES_IN_REG = 6;
   const uint8_t CMD_LEN = 4+(8);
@@ -362,7 +356,7 @@ float LTC68041::cell_compute_soc(float voc) {
  The command clears the Auxiliary registers and intiallizes
  all values to 1. The register will read back hexadecimal 0xFF
  after the command is sent.
- LTC6804_clraux Function sequence:
+ LTC68041::clraux Function sequence:
 
   1. Load clraux command into cmd array
   2. Calculate clraux cmd PEC and load pec into cmd array
@@ -403,7 +397,7 @@ Reads and parses the LTC6804 cell voltage registers.
   3. Check the PEC of the data read back vs the calculated PEC for each read register command
   4. Return pec_error flag  
 *********************************************************************************************************/
-uint8_t LTC6804::rdcv(uint16_t cell_codes[]) // Array of the parsed cell codes                  
+uint8_t LTC68041::rdcv(uint16_t cell_codes[]) // Array of the parsed cell codes                  
 {
 
   const uint8_t NUM_RX_BYT = 8;
@@ -423,7 +417,7 @@ uint8_t LTC6804::rdcv(uint16_t cell_codes[]) // Array of the parsed cell codes
     for (uint8_t cell_reg = 1; cell_reg<5; cell_reg++)                    //executes once for each of the LTC6804 cell voltage registers
     {
       data_counter = 0;
-      LTC6804_rdcv_reg(cell_reg, cell_data );                //Reads a single Cell voltage register
+      rdcv_reg(cell_reg, cell_data );                //Reads a single Cell voltage register
 
 		//2.
         for (uint8_t current_cell = 0; current_cell<CELL_IN_REG; current_cell++)  // This loop parses the read back data into cell voltages, it
@@ -467,7 +461,7 @@ uint8_t LTC6804::rdcv(uint16_t cell_codes[]) // Array of the parsed cell codes
   2. Calculate clrcell cmd PEC and load pec into cmd array
   3. send broadcast clrcell command to LTC6804
 *********************************************************************************************************/
-void LTC6804::clrcell()
+void LTC68041::clrcell()
 {
   uint8_t cmd[4];
   uint16_t cmd_pec;
@@ -495,7 +489,7 @@ void LTC6804::clrcell()
 /********************************************************************************************************
  The function reads a single GPIO voltage register and stores thre read data
  in the *data point as a byte array. This function is rarely used outside of
- the LTC6804_rdaux() command.
+ the LTC68041::rdaux() command.
   1. Determine Command and initialize command array
   2. Calculate Command PEC
   3. Wake up isoSPI, this step is optional
@@ -709,7 +703,7 @@ bool LTC68041::checkSPI_mute()
 [return]  int8_t, PEC Status  0: No PEC error detected -1: PEC error detected, retry read
 
 *********************************************************************************************************/ 
-int8_t LTC6804::rdaux(uint8_t reg, uint16_t aux_codes[6])
+int8_t LTC68041::rdaux(uint8_t reg, uint16_t aux_codes[6])
 {
 
 
@@ -723,7 +717,7 @@ int8_t LTC6804::rdaux(uint8_t reg, uint16_t aux_codes[6])
   uint16_t parsed_aux;
   uint16_t received_pec;
   uint16_t data_pec;
-  data = (uint8_t *) malloc((NUM_RX_BYT*total_ic)*sizeof(uint8_t));
+  data = (uint8_t *) malloc((NUM_RX_BYT)*sizeof(uint8_t));
   //1.a
   if (reg == 0)
   {
@@ -731,7 +725,7 @@ int8_t LTC6804::rdaux(uint8_t reg, uint16_t aux_codes[6])
     for (uint8_t gpio_reg = 1; gpio_reg<3; gpio_reg++)                //executes once for each of the LTC6804 aux voltage registers
     {
       data_counter = 0;
-      LTC6804_rdaux_reg(gpio_reg, data);                 //Reads the raw auxiliary register data into the data[] array
+      LTC68041::rdaux_reg(gpio_reg, data);                 //Reads the raw auxiliary register data into the data[] array
 
         //a.ii
         for (uint8_t current_gpio = 0; current_gpio< GPIO_IN_REG; current_gpio++) // This loop parses the read back data into GPIO voltages, it
@@ -763,7 +757,7 @@ int8_t LTC6804::rdaux(uint8_t reg, uint16_t aux_codes[6])
   else
   {
     //b.i
-    LTC6804_rdaux_reg(reg, total_ic, data);
+    rdaux_reg(reg, data);
       // current_ic is used as an IC counter
 
       //b.ii
@@ -773,7 +767,7 @@ int8_t LTC6804::rdaux(uint8_t reg, uint16_t aux_codes[6])
 
         parsed_aux = (data[data_counter] + (data[data_counter+1]<<8));        //Each gpio codes is received as two bytes and is combined to
         // create the parsed gpio voltage code
-        aux_codescurrent_gpio +((reg-1)*GPIO_IN_REG)] = parsed_aux;
+        aux_codes[current_gpio +((reg-1)*GPIO_IN_REG)] = parsed_aux;
         data_counter=data_counter+2;                      //Because gpio voltage codes are two bytes the data counter
         //must increment by two for each parsed gpio voltage code
       }
@@ -809,7 +803,7 @@ int8_t LTC6804::rdaux(uint8_t reg, uint16_t aux_codes[6])
   CH   Determines which cell channels are converted
   DCP  Determines if Discharge is Permitted      
 *********************************************************************************************************/
-void LTC6804::adcv()
+void LTC68041::adcv()
 {
 
   uint8_t cmd[4];
@@ -837,7 +831,7 @@ void LTC6804::adcv()
 /*!******************************************************************************************************
 Starts cell voltage conversion with test values from selftest 1
 *********************************************************************************************************/
-void LTC6804::adcv_test1()
+void LTC68041::adcv_test1()
 {
 
   uint8_t cmd[4];
@@ -865,7 +859,7 @@ void LTC6804::adcv_test1()
 /*******************************************************************************************************
 Starts cell voltage conversion with test values from selftest 2
 *********************************************************************************************************/
-void LTC6804::adcv_test2()
+void LTC68041::adcv_test2()
 {
 
   uint8_t cmd[4];
@@ -893,7 +887,7 @@ void LTC6804::adcv_test2()
 /*******************************************************************************************************
 Kind of debug function, a lot information are printed via Serial
 *********************************************************************************************************/
-bool LTC6804::rdstatus_debug()
+bool LTC68041::rdstatus_debug()
 {
   uint16_t response_pec_calc;
   uint16_t response_pec;			
@@ -995,7 +989,7 @@ Calculates the internal Temperature
 Checks the CRC and returns the Temperature
 If itmp=5555, then CRC is wrong  
 *********************************************************************************************************/
-float  LTC6804::rditemp_debug()
+float  LTC68041::rditemp_debug()
 {
   uint16_t response_pec_calc;
   uint16_t response_pec;			
@@ -1073,7 +1067,7 @@ calculates the Voltage out of a raw register
 
 NEED TO WORK ON THIS   
 *********************************************************************************************************/
-double LTC6804::convertV(uint16_t v) 
+double LTC68041::convertV(uint16_t v) 
 {
     
     return v * 100E-6;
@@ -1087,7 +1081,7 @@ double LTC6804::convertV(uint16_t v)
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC6804::adax()
+void LTC68041::adax()
 {
   uint8_t cmd[4];
   uint16_t cmd_pec;
@@ -1108,7 +1102,7 @@ void LTC6804::adax()
 /********************************************************************************************************
 Converts the raw  
 *********************************************************************************************************/
-float LTC6804::convertITMP(uint16_t ITMP, float offset)
+float LTC68041::convertITMP(uint16_t ITMP, float offset)
 {
   float InternalTemp;
   //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
@@ -1128,7 +1122,7 @@ Reads and parses the LTC6804 cell voltage registers and returns some additional 
   3. Check the PEC of the data read back vs the calculated PEC for each read register command
   4. Return pec_error flag 
 *********************************************************************************************************/
-uint8_t LTC6804::rdcv_debug(uint16_t cell_codes[CellNum]) // Array of the parsed cell codes                  
+uint8_t LTC68041::rdcv_debug(uint16_t cell_codes[CellNum]) // Array of the parsed cell codes                  
 {
 
   const uint8_t NUM_RX_BYT = 8;
@@ -1148,7 +1142,7 @@ uint8_t LTC6804::rdcv_debug(uint16_t cell_codes[CellNum]) // Array of the parsed
     for (uint8_t cell_reg = 1; cell_reg<5; cell_reg++)                    //executes once for each of the LTC6804 cell voltage registers
     {
       data_counter = 0;
-      LTC6804_rdcv_reg(cell_reg, cell_data );                //Reads a single Cell voltage register
+      LTC68041::rdcv_reg(cell_reg, cell_data );                //Reads a single Cell voltage register
 
 		//2.
         for (uint8_t current_cell = 0; current_cell<CELL_IN_REG; current_cell++)  // This loop parses the read back data into cell voltages, it
@@ -1180,7 +1174,7 @@ uint8_t LTC6804::rdcv_debug(uint16_t cell_codes[CellNum]) // Array of the parsed
 	Serial.print("\nCellCodes: ");
 	for (int i = 0 ; i < 12; i++)
 	{
-		CellVoltage[i]= LTC6804_convertV(cell_codes[i]);
+		CellVoltage[i]= LTC68041::convertV(cell_codes[i]);
 		Serial.print(cell_codes[i], HEX);
 		Serial.print("\t");
 	}
@@ -1201,7 +1195,7 @@ uint8_t LTC6804::rdcv_debug(uint16_t cell_codes[CellNum]) // Array of the parsed
 /********************************************************************************************************
  The function reads a single cell voltage register and stores the read data
  in the *data point as a byte array. This function is rarely used outside of
- the LTC6804_rdcv() command.
+ the LTC68041::rdcv() command.
 
 [in] uint8_t reg; This controls which cell voltage register is read back.
           1: Read back cell group A
@@ -1211,12 +1205,12 @@ uint8_t LTC6804::rdcv_debug(uint16_t cell_codes[CellNum]) // Array of the parsed
 
 [in] uint8_t total_ic; This is the number of ICs in the daisy chain(-1 only)
 [out] uint8_t *data; An array of the unparsed cell codes
-  LTC6804_rdcv_reg Function Process:
+  LTC68041::rdcv_reg Function Process:
   1. Determine Command and initialize command array
   2. Calculate Command PEC
   3. Send Global Command to LTC6804 
 *********************************************************************************************************/
-void LTC6804::rdcv_reg(uint8_t reg, uint8_t *data)
+void LTC68041::rdcv_reg(uint8_t reg, uint8_t *data)
 {
   const uint8_t REG_LEN = 8; //number of bytes in each ICs register + 2 bytes for the PEC
   uint8_t cmd[4];
