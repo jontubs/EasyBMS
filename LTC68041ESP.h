@@ -130,14 +130,13 @@ class LTC68041
 		byte pinMISO = D6;
 		byte pinCLK = D5;		
 		const static byte CellNum = 12;  //Number of cells checked by this Chip
-		uint8_t ADCV[2]; //!< Cell Voltage conversion command.
-		uint8_t ADAX[2]; //!< GPIO conversion command.
 		uint8_t dummy = 0x55;
 		uint8_t SizeConfigReg = 6; //Len Conifiguration Register = 6
 		uint8_t SizeStatusRegA = 6; //Len Conifiguration Register = 6
 		uint8_t SizeStatusRegB = 6; //Len Conifiguration Register = 6
 		uint8_t PEClen = 2;		//Len PEC Bytes = 2   	
-		uint8_t CFGR[8];		//Configuration Register Group
+		uint8_t CFGRw[8];		//Configuration Register Group Write
+		uint8_t CFGRr[8];		//Configuration Register Group Read
 		uint8_t	CVAR[8];		//Cell Voltage Register Group A
 		uint8_t	CVBR[8];		//Cell Voltage Register Group B
 		uint8_t	CVCR[8];		//Cell Voltage Register Group C
@@ -146,9 +145,13 @@ class LTC68041
 		uint8_t	AVBR[8];		//Auxiliary Register Group B
 		uint8_t	STAR[8];		//Status Register Group A
 		uint8_t	STBR[8];		//Status Register Group B
+		float cellVoltage[12];	//Cell voltage on volt
+		float gpioVoltage[5];	//Voltage on the GPIO pins
+		float SumCellVoltages;	//Sum of all cell voltages
+		float AnalogSupplyVoltage;	//16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA • 100µV Normal Range Is within 4.5V to 5.5V
+    	float DigitalSupplyVoltage; //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA • 100µV Normal Range Is within 2.7V to 3.6V
+    	float InternalTemp;		//16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
 
-
-    	
 		explicit LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin);
 		void helloworld();
 		void initialize();
@@ -156,7 +159,10 @@ class LTC68041
 		uint16_t pec15_calc(uint8_t len, uint8_t *data);
 		void spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_data, uint8_t rx_len);
 		void spi_write_array(uint8_t len, uint8_t data[]);
-		bool SetVUVVOV(float Undervoltage, float Overvoltage, uint8_t cfg[8]);
+		void initCFGR();
+		uint8_t rdcfg();
+		void setVUV(float Undervoltage);
+		void setVOV(float Overvoltage);
 		int8_t rdcfg_debug(uint8_t r_config[8]);
 		void balance_cfg(int cell, uint8_t cfg[6]);
 		void wrcfg(uint8_t config[6]);
@@ -166,7 +172,6 @@ class LTC68041
 		void rdcv_reg(uint8_t reg, uint8_t *data);
 		void clrcell();
 		void rdaux_reg(uint8_t reg, uint8_t *data);	
-		void set_adc(uint8_t MD, uint8_t DCP, uint8_t CH, uint8_t CHG);
 		void checkSPI();
 		bool checkSPI_mute();
 		int8_t rdaux(uint8_t reg, uint16_t aux_codes[6]);
@@ -183,8 +188,11 @@ class LTC68041
 		uint8_t rdauxa();
 		uint8_t rdauxb();
 		uint8_t rdstata();  
-		uint8_t rdstatb();   
-		
+		uint8_t rdstatb();
+		void adcvax();
+		void adstat();
+		void adowpu();
+		void adowpd();
 
 
 
