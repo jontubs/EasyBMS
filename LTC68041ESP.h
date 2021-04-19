@@ -180,8 +180,10 @@ class LTC68041
 		void adax();
 		float convertITMP(uint8_t STAR[6], float offset);
 		uint8_t rdcv_debug(uint16_t cell_codes[CellNum]);
-		uint8_t rdstar();  
-		
+		uint8_t rdauxa();
+		uint8_t rdauxb();
+		uint8_t rdstata();  
+		uint8_t rdstatb();   
 		
 
 
