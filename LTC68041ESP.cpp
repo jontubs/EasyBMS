@@ -443,25 +443,152 @@ uint8_t LTC68041::rdcv(uint16_t cell_codes[CellNum]) // Array of the parsed cell
 }
 
 
+
 /********************************************************************************************************
- The function is used to read the of the Status Register Group A LTC6804.
- This function will send the requested read commands parse the data
- and store the response in STAR
+ The function is used to read the of the Auxiliary Register Group A  of one LTC6804.
+ This function sends the read commands, parses the data and stores the response in AVAR.
+ 
+ 1. Set command to AVAR
+ 2. Calc the PEC 
+ 3. Wakeup Chip
+ 4. Send command and read response
+ 5. Check PEC
+ 6. Copy data to object
+ 7. Return Result -1= Error , 0= DataOkay
 *********************************************************************************************************/
-uint8_t LTC68041::rdstar()                
+uint8_t LTC68041::rdauxa()                
 {
 
   const uint8_t NUM_RX_BYT = 8; // number of bytes in the register + 2 bytes for the PEC
   const uint8_t BYT_IN_REG = 6;
-
 
   uint8_t pec_error = 0;
   uint16_t received_pec;
   uint8_t received_data[NUM_RX_BYT]; //data counter
   uint16_t data_pec;
   uint8_t data_counter=0; //data counter
+  uint8_t cmd[4];
+  uint16_t cmd_pec;
+
+  //1
+  cmd[0] = 0x00;
+  cmd[1] = 0x0C;
+  //2
+  cmd_pec = pec15_calc(2, cmd);
+  cmd[2] = (uint8_t)(cmd_pec >> 8);
+  cmd[3] = (uint8_t)(cmd_pec);
+  //3
+  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
+  //4
+  spi_write_read(cmd,4,received_data,NUM_RX_BYT);
+  //5
+  //Set data pointer to the first PEC byte
+  data_counter= BYT_IN_REG;
+  received_pec = (received_data[data_counter] << 8) + received_data[data_counter+1]; //The received PEC for the current_ic is transmitted as the 7th and 8th
+  //(uint8_t len, uint8_t *data)
+  data_pec = pec15_calc(BYT_IN_REG, received_data); 
+  if (received_pec != data_pec)
+  {
+    pec_error = -1;                             //The pec_error variable is simply set negative if any PEC errors
+    //are detected in the serial data
+  }
+  else
+  {
+	//6
+    //Copy 	Target   	Source  	Size
+  	memcpy( AVAR, received_data, BYT_IN_REG );
+  }
+  //printArray(NUM_RX_BYT, received_data);
+  //7
+  return(pec_error);
+}
 
 
+/********************************************************************************************************
+ The function is used to read the of the Auxiliary Register Group B  of one LTC6804.
+ This function sends the read commands, parses the data and stores the response in AVBR.
+ 
+ 1. Set command to AVBR
+ 2. Calc the PEC 
+ 3. Wakeup Chip
+ 4. Send command and read response
+ 5. Check PEC
+ 6. Copy data to object
+ 7. Return Result -1= Error , 0= DataOkay
+*********************************************************************************************************/
+uint8_t LTC68041::rdauxb()                
+{
+
+  const uint8_t NUM_RX_BYT = 8; // number of bytes in the register + 2 bytes for the PEC
+  const uint8_t BYT_IN_REG = 6;
+
+  uint8_t pec_error = 0;
+  uint16_t received_pec;
+  uint8_t received_data[NUM_RX_BYT]; //data counter
+  uint16_t data_pec;
+  uint8_t data_counter=0; //data counter
+  uint8_t cmd[4];
+  uint16_t cmd_pec;
+
+  //1
+  cmd[0] = 0x00;
+  cmd[1] = 0x0E;
+  //2
+  cmd_pec = pec15_calc(2, cmd);
+  cmd[2] = (uint8_t)(cmd_pec >> 8);
+  cmd[3] = (uint8_t)(cmd_pec);
+  //3
+  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
+  //4
+  spi_write_read(cmd,4,received_data,NUM_RX_BYT);
+  //5
+  //Set data pointer to the first PEC byte
+  data_counter= BYT_IN_REG;
+  received_pec = (received_data[data_counter] << 8) + received_data[data_counter+1]; //The received PEC for the current_ic is transmitted as the 7th and 8th
+  //(uint8_t len, uint8_t *data)
+  data_pec = pec15_calc(BYT_IN_REG, received_data); 
+  if (received_pec != data_pec)
+  {
+    pec_error = -1;                             //The pec_error variable is simply set negative if any PEC errors
+    //are detected in the serial data
+  }
+  else
+  {
+	//6
+    //Copy 	Target   	Source  	Size
+  	memcpy( AVBR, received_data, BYT_IN_REG );
+  }
+  //printArray(NUM_RX_BYT, received_data);
+  //7
+  return(pec_error);
+}
+
+
+/********************************************************************************************************
+ The function is used to read the of the Status Register Group A of one LTC6804.
+ This function sends the read commands, parses the data and stores the response in STAR.
+ 
+ 1. Set command to RDSTATA
+ 2. Calc the PEC 
+ 3. Wakeup Chip
+ 4. Send command and read response
+ 5. Check PEC
+ 6. Copy data to object
+ 7. Return Result -1= Error , 0= DataOkay
+*********************************************************************************************************/
+
+
+uint8_t LTC68041::rdstata()                
+{
+
+  const uint8_t NUM_RX_BYT = 8; // number of bytes in the register + 2 bytes for the PEC
+  const uint8_t BYT_IN_REG = 6;
+
+  uint8_t pec_error = 0;
+  uint16_t received_pec;
+  uint8_t received_data[NUM_RX_BYT]; //data counter
+  uint16_t data_pec;
+  uint8_t data_counter=0; //data counter
   uint8_t cmd[4];
   uint16_t cmd_pec;
 
@@ -472,17 +599,16 @@ uint8_t LTC68041::rdstar()
   cmd_pec = pec15_calc(2, cmd);
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
-
   //3
   wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
   //4
   spi_write_read(cmd,4,received_data,NUM_RX_BYT);
-
   //5
+  //Set data pointer to the first PEC byte
   data_counter= BYT_IN_REG;
   received_pec = (received_data[data_counter] << 8) + received_data[data_counter+1]; //The received PEC for the current_ic is transmitted as the 7th and 8th
   //(uint8_t len, uint8_t *data)
-  data_pec = pec15_calc(BYT_IN_REG, received_data);   //&received_data[NUM_RX_BYT]
+  data_pec = pec15_calc(BYT_IN_REG, received_data); 
   if (received_pec != data_pec)
   {
     pec_error = -1;                             //The pec_error variable is simply set negative if any PEC errors
@@ -490,10 +616,72 @@ uint8_t LTC68041::rdstar()
   }
   else
   {
+	//6
     //Copy 	Target   	Source  	Size
   	memcpy( STAR, received_data, BYT_IN_REG );
   }
-  printArray(NUM_RX_BYT, received_data);
+  //printArray(NUM_RX_BYT, received_data);
+  //7
+  return(pec_error);
+}
+
+
+/********************************************************************************************************
+ The function is used to read the of the Status Register Group B  of one LTC6804.
+ This function sends the read commands, parses the data and stores the response in STBR.
+ 
+ 1. Set command to RDSTATB
+ 2. Calc the PEC 
+ 3. Wakeup Chip
+ 4. Send command and read response
+ 5. Check PEC
+ 6. Copy data to object
+ 7. Return Result -1= Error , 0= DataOkay
+*********************************************************************************************************/
+uint8_t LTC68041::rdstatb()                
+{
+
+  const uint8_t NUM_RX_BYT = 8; // number of bytes in the register + 2 bytes for the PEC
+  const uint8_t BYT_IN_REG = 6;
+
+  uint8_t pec_error = 0;
+  uint16_t received_pec;
+  uint8_t received_data[NUM_RX_BYT]; //data counter
+  uint16_t data_pec;
+  uint8_t data_counter=0; //data counter
+  uint8_t cmd[4];
+  uint16_t cmd_pec;
+
+  //1
+  cmd[0] = 0x00;
+  cmd[1] = 0x12;
+  //2
+  cmd_pec = pec15_calc(2, cmd);
+  cmd[2] = (uint8_t)(cmd_pec >> 8);
+  cmd[3] = (uint8_t)(cmd_pec);
+  //3
+  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
+  //4
+  spi_write_read(cmd,4,received_data,NUM_RX_BYT);
+  //5
+  //Set data pointer to the first PEC byte
+  data_counter= BYT_IN_REG;
+  received_pec = (received_data[data_counter] << 8) + received_data[data_counter+1]; //The received PEC for the current_ic is transmitted as the 7th and 8th
+  //(uint8_t len, uint8_t *data)
+  data_pec = pec15_calc(BYT_IN_REG, received_data); 
+  if (received_pec != data_pec)
+  {
+    pec_error = -1;                             //The pec_error variable is simply set negative if any PEC errors
+    //are detected in the serial data
+  }
+  else
+  {
+	//6
+    //Copy 	Target   	Source  	Size
+  	memcpy( STBR, received_data, BYT_IN_REG );
+  }
+  //printArray(NUM_RX_BYT, received_data);
+  //7
   return(pec_error);
 }
 
