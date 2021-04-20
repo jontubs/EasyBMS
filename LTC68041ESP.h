@@ -129,7 +129,7 @@ class LTC68041
 		byte pinMOSI = D7;
 		byte pinMISO = D6;
 		byte pinCLK = D5;		
-		const static byte CellNum = 12;  //Number of cells checked by this Chip
+		const static byte cellNum = 12;  //Number of cells checked by this Chip
 		uint8_t dummy = 0x55;
 		uint8_t SizeConfigReg = 6; //Len Conifiguration Register = 6
 		uint8_t SizeStatusRegA = 6; //Len Conifiguration Register = 6
@@ -145,6 +145,8 @@ class LTC68041
 		uint8_t	AVBR[8];		//Auxiliary Register Group B
 		uint8_t	STAR[8];		//Status Register Group A
 		uint8_t	STBR[8];		//Status Register Group B
+		uint16_t cellCodes[cellNum];  //Raw values extracted from the voltage registers
+		uint16_t SOC;			//Sum of all cells Raw
 		float cellVoltage[12];	//Cell voltage on volt
 		float gpioVoltage[5];	//Voltage on the GPIO pins
 		float SumCellVoltages;	//Sum of all cell voltages
@@ -168,7 +170,7 @@ class LTC68041
 		void wrcfg(uint8_t config[6]);
 		float cell_compute_soc(float voc);
 		void clraux();
-		uint8_t rdcv(uint16_t cell_codes[CellNum]);
+		uint8_t rdcv();
 		void rdcv_reg(uint8_t reg, uint8_t *data);
 		void clrcell();
 		void rdaux_reg(uint8_t reg, uint8_t *data);	
@@ -181,10 +183,11 @@ class LTC68041
 		bool rdstatus_debug();
 		float  rditemp_debug();
 		float  rditemp();
-		double convertV(uint16_t v); 
+		void cnvCellVolt();
+		void cnvStatus();
 		void adax();
-		float convertITMP(uint8_t STAR[6], float offset);
-		uint8_t rdcv_debug(uint16_t cell_codes[CellNum]);
+		float cnvITMP(uint8_t STAR[6], float offset);
+		uint8_t rdcv_debug(uint16_t cell_codes[cellNum]);
 		uint8_t rdauxa();
 		uint8_t rdauxb();
 		uint8_t rdstata();  
