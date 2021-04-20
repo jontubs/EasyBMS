@@ -415,7 +415,7 @@ Reads and parses the LTC6804 cell voltage registers.
   3. Check the PEC of the data read back vs the calculated PEC for each read register command
   4. Return pec_error flag  
 *********************************************************************************************************/
-uint8_t LTC68041::rdcv(uint16_t cell_codes[CellNum]) // Array of the parsed cell codes                  
+uint8_t LTC68041::rdcv() // Array of the parsed cell codes                  
 {
 
   const uint8_t NUM_RX_BYT = 8;
@@ -445,7 +445,7 @@ uint8_t LTC68041::rdcv(uint16_t cell_codes[CellNum]) // Array of the parsed cell
           parsed_cell = cell_data[data_counter] + (cell_data[data_counter + 1] << 8);//Each cell code is received as two bytes and is combined to
           // create the parsed cell voltage code
 
-          cell_codes[current_cell  + ((cell_reg - 1) * CELL_IN_REG)] = parsed_cell;
+          cellCodes[current_cell  + ((cell_reg - 1) * CELL_IN_REG)] = parsed_cell;
           data_counter = data_counter + 2;                       //Because cell voltage codes are two bytes the data counter
           //must increment by two for each parsed cell code
         }
@@ -1357,7 +1357,7 @@ float  LTC68041::rditemp_debug()
   }
 
   
-  InternalTemp=convertITMP(STAR,offset);
+  InternalTemp=cnvITMP(STAR,offset);
 
 
   response_pec_calc = pec15_calc(SizeStatusRegA, response);
@@ -1426,7 +1426,7 @@ float  LTC68041::rditemp()
   }
 
   
-  InternalTemp=convertITMP(STAR,offset);
+  InternalTemp=cnvITMP(STAR,offset);
 
 
   response_pec_calc = pec15_calc(SizeStatusRegA, response);
@@ -1445,16 +1445,32 @@ float  LTC68041::rditemp()
 
 
 /********************************************************************************************************
-calculates the Voltage out of a raw register
-
-NEED TO WORK ON THIS   
+calculates the Voltage out of the cellcodes
+stored into cell voltages
 *********************************************************************************************************/
-double LTC68041::convertV(uint16_t v) 
+void LTC68041::cnvCellVolt() 
 {
-    
-    return v * 100E-6;
+    for(int i=0;i<cellNum;i++)
+    {
+    	cellVoltage[i]=cellCodes[i] * 100E-6;
+	}
 }
 
+
+/********************************************************************************************************
+calculates the Voltage out of the cellcodes
+stored into cell voltages
+*********************************************************************************************************/
+void LTC68041::cnvStatus() 
+{
+	SOC=(uint16_t)STAR[0];
+	SOC=SOC+(STAR[1] << 8);
+	SumCellVoltages=SOC*20*100E-6;		//Sum of All Cells Voltage = SOC • 100µV • 20
+    for(int i=0;i<cellNum;i++)
+    {
+    	cellVoltage[i]=cellCodes[i] * 100E-6;
+	}
+}
 
 /********************************************************************************************************
   Starts an ADC conversions of the LTC6804 GPIO inputs.
@@ -1572,7 +1588,7 @@ void LTC68041::adowpd()
 /********************************************************************************************************
 Converts the raw  
 *********************************************************************************************************/
-float LTC68041::convertITMP(uint8_t STAR[6], float offset)
+float LTC68041::cnvITMP(uint8_t STAR[6], float offset)
 {
   float InternalTemp;
   uint16_t ITMP;
@@ -1594,7 +1610,7 @@ Reads and parses the LTC6804 cell voltage registers and returns some additional 
   3. Check the PEC of the data read back vs the calculated PEC for each read register command
   4. Return pec_error flag 
 *********************************************************************************************************/
-uint8_t LTC68041::rdcv_debug(uint16_t cell_codes[CellNum]) // Array of the parsed cell codes                  
+uint8_t LTC68041::rdcv_debug(uint16_t cell_codes[cellNum]) // Array of the parsed cell codes                  
 {
 
   const uint8_t NUM_RX_BYT = 8;
@@ -1614,7 +1630,7 @@ uint8_t LTC68041::rdcv_debug(uint16_t cell_codes[CellNum]) // Array of the parse
     for (uint8_t cell_reg = 1; cell_reg<5; cell_reg++)                    //executes once for each of the LTC6804 cell voltage registers
     {
       data_counter = 0;
-      LTC68041::rdcv_reg(cell_reg, cell_data );                //Reads a single Cell voltage register
+      rdcv_reg(cell_reg, cell_data );                //Reads a single Cell voltage register
 
 		//2.
         for (uint8_t current_cell = 0; current_cell<CELL_IN_REG; current_cell++)  // This loop parses the read back data into cell voltages, it
@@ -1644,10 +1660,11 @@ uint8_t LTC68041::rdcv_debug(uint16_t cell_codes[CellNum]) // Array of the parse
     
 	float CellVoltage[12];
 	Serial.print("\nCellCodes: ");
+	cnvCellVolt();
 	for (int i = 0 ; i < 12; i++)
 	{
-		CellVoltage[i]= LTC68041::convertV(cell_codes[i]);
-		Serial.print(cell_codes[i], HEX);
+		CellVoltage[i]= cellVoltage[i];
+		Serial.print(cellCodes[i], HEX);
 		Serial.print("\t");
 	}
 	Serial.print("\nCell Voltages: ");
