@@ -1461,15 +1461,87 @@ void LTC68041::cnvCellVolt()
 calculates the Voltage out of the cellcodes
 stored into cell voltages
 *********************************************************************************************************/
+void LTC68041::cnvAuxVolt() 
+{
+	AuxCodes[0]=AVAR[0]+((uint16_t)AVAR[1])<<8;
+	AuxCodes[1]=AVAR[2]+((uint16_t)AVAR[3])<<8;
+	AuxCodes[2]=AVAR[4]+((uint16_t)AVAR[5])<<8;
+	AuxCodes[3]=AVBR[0]+((uint16_t)AVBR[1])<<8;
+	AuxCodes[4]=AVBR[2]+((uint16_t)AVBR[3])<<8;
+	
+    for(int i=0;i<gpioNum;i++)
+    {
+    	gpioVoltage[i]=AuxCodes[i] * 100E-6;
+	}
+}
+
+/********************************************************************************************************
+converts the complete Status register with all values included
+*********************************************************************************************************/
 void LTC68041::cnvStatus() 
 {
 	SOC=(uint16_t)STAR[0];
-	SOC=SOC+(STAR[1] << 8);
+	SOC=SOC+((uint16_t)STAR[1] << 8);
 	SumCellVoltages=SOC*20*100E-6;		//Sum of All Cells Voltage = SOC • 100µV • 20
     for(int i=0;i<cellNum;i++)
     {
     	cellVoltage[i]=cellCodes[i] * 100E-6;
 	}
+   ITMP=STAR[2] | ((uint16_t)STAR[3])<<8;
+   //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
+   InternalTemp= ((float)ITMP * 100E-6 / 7.5E-3 - 273.0 ) + OffsetTemp;
+   //Calc Analog Supply Voltage
+   VA=(uint16_t)STAR[4];
+   VA=VA+((uint16_t)STAR[5] << 8);
+   AnalogSupplyVoltage=(float)VA*100E-6;
+   //Calc Digital Supply Voltage
+   VD=(uint16_t)STBR[0];
+   VD=VD+((uint16_t)STBR[1] << 8);
+   AnalogSupplyVoltage=(float)VD*100E-6;
+   
+   CUV[0]=bitRead(STBR[2], 0);
+   COV[0]=bitRead(STBR[2], 1);
+   
+   CUV[1]=bitRead(STBR[2], 2);
+   COV[1]=bitRead(STBR[2], 3);
+   
+   CUV[2]=bitRead(STBR[2], 4);
+   COV[2]=bitRead(STBR[2], 5);
+   
+   CUV[3]=bitRead(STBR[2], 6);
+   COV[3]=bitRead(STBR[2], 7);
+   
+   CUV[4]=bitRead(STBR[3], 0);
+   COV[4]=bitRead(STBR[3], 1);
+   
+   CUV[5]=bitRead(STBR[3], 2);
+   COV[5]=bitRead(STBR[3], 3);
+   
+   CUV[6]=bitRead(STBR[3], 4);
+   COV[6]=bitRead(STBR[3], 5);  
+   
+   CUV[7]=bitRead(STBR[3], 6);
+   COV[7]=bitRead(STBR[3], 7);  
+   
+   CUV[8]=bitRead(STBR[4], 0);
+   COV[8]=bitRead(STBR[4], 1);  
+   
+   CUV[9]=bitRead(STBR[4], 2);
+   COV[9]=bitRead(STBR[4], 3); 
+    
+   CUV[10]=bitRead(STBR[4], 4);
+   COV[10]=bitRead(STBR[4], 5);  
+   
+   CUV[11]=bitRead(STBR[4], 6);
+   COV[11]=bitRead(STBR[4], 7);  
+
+   REV=STBR[5]>>4;
+   
+   MUXFAIL=bitRead(STBR[5], 1);
+   
+   THSD=bitRead(STBR[5], 0);
+   
+   
 }
 
 /********************************************************************************************************
