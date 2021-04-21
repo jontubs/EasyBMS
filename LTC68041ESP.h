@@ -125,12 +125,14 @@ class LTC68041
    {
     public:
     	
- 		byte csPin = D8;
-		byte pinMOSI = D7;
-		byte pinMISO = D6;
-		byte pinCLK = D5;		
+ 		byte csPin = D8;		//ChipSelectPin
+		byte pinMOSI = D7;		//Master Out Slave In Pin
+		byte pinMISO = D6;		//Master In Slave Out Pin
+		byte pinCLK = D5;		//Clock Pin
 		const static byte cellNum = 12;  //Number of cells checked by this Chip
-		uint8_t dummy = 0x55;
+		const static byte gpioNum = 5;  //Number of GPIOs
+		
+		uint8_t dummy = 0x55;		//Just a dummy byte
 		uint8_t SizeConfigReg = 6; //Len Conifiguration Register = 6
 		uint8_t SizeStatusRegA = 6; //Len Conifiguration Register = 6
 		uint8_t SizeStatusRegB = 6; //Len Conifiguration Register = 6
@@ -145,22 +147,32 @@ class LTC68041
 		uint8_t	AVBR[8];		//Auxiliary Register Group B
 		uint8_t	STAR[8];		//Status Register Group A
 		uint8_t	STBR[8];		//Status Register Group B
+		uint8_t REV;				//Revision Code Device Revision Code. See Revision Code and Reserved Bits in Operation Section.
+		uint8_t RSVD;				//Reserved Bits See Revision Code and Reserved Bits in Operation Section.
 		uint16_t cellCodes[cellNum];  //Raw values extracted from the voltage registers
+		uint16_t AuxCodes[gpioNum];	//Auxilury Raw Data 
 		uint16_t SOC;			//Sum of all cells Raw
-		float cellVoltage[12];	//Cell voltage on volt
-		float gpioVoltage[5];	//Voltage on the GPIO pins
+		uint16_t ITMP;			//InternalTemperautr Raw
+		uint16_t VA;			//Analog Power Supply Voltage 16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA • 100µV Normal Range Is within 4.5V to 5.5V
+		uint16_t VD;			//Digital Power Supply Voltage 16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA • 100µV Normal Range Is within 2.7V to 3.6V
+		bool CUV[cellNum];		//Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
+		bool COV[cellNum];		//Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
+		bool MUXFAIL;			//Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
+		bool THSD;				//Thermal Shutdown Status Read: 0 -> Thermal Shutdown Has Not Occurred 1 -> Thermal Shutdown Has Occurred THSD Bit Cleared to 0 on Read of Status RegIster Group B
+		
+		float cellVoltage[cellNum];	//Cell voltage on volt
+		float gpioVoltage[gpioNum];	//Voltage on the GPIO pins
 		float SumCellVoltages;	//Sum of all cell voltages
 		float AnalogSupplyVoltage;	//16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA • 100µV Normal Range Is within 4.5V to 5.5V
     	float DigitalSupplyVoltage; //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA • 100µV Normal Range Is within 2.7V to 3.6V
     	float InternalTemp;		//16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
-
+		float OffsetTemp;		//Offset of temperaturemeasurement
+		
+		//Methods
 		explicit LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin);
 		void helloworld();
 		void initialize();
 		void wakeup_idle();
-		uint16_t pec15_calc(uint8_t len, uint8_t *data);
-		void spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_data, uint8_t rx_len);
-		void spi_write_array(uint8_t len, uint8_t data[]);
 		void initCFGR();
 		uint8_t rdcfg();
 		void setVUV(float Undervoltage);
@@ -185,6 +197,7 @@ class LTC68041
 		float  rditemp();
 		void cnvCellVolt();
 		void cnvStatus();
+		void cnvAuxVolt();
 		void adax();
 		float cnvITMP(uint8_t STAR[6], float offset);
 		uint8_t rdcv_debug(uint16_t cell_codes[cellNum]);
@@ -196,7 +209,9 @@ class LTC68041
 		void adstat();
 		void adowpu();
 		void adowpd();
-
+		uint16_t pec15_calc(uint8_t len, uint8_t *data);
+		void spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_data, uint8_t rx_len);
+		void spi_write_array(uint8_t len, uint8_t data[]);
 
 
 		
