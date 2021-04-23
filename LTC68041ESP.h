@@ -157,6 +157,7 @@ class LTC68041
 		uint16_t VD;			//Digital Power Supply Voltage 16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA • 100µV Normal Range Is within 2.7V to 3.6V
 		bool CUV[cellNum];		//Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
 		bool COV[cellNum];		//Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
+		uint16_t Discharge;	//Array of bits, if 1=Discharge Active	if 0=Off
 		bool MUXFAIL;			//Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
 		bool THSD;				//Thermal Shutdown Status Read: 0 -> Thermal Shutdown Has Not Occurred 1 -> Thermal Shutdown Has Occurred THSD Bit Cleared to 0 on Read of Status RegIster Group B
 		
@@ -177,6 +178,8 @@ class LTC68041
 		uint8_t rdcfg();
 		void setVUV(float Undervoltage);
 		void setVOV(float Overvoltage);
+		void resetDischargeAll();
+		bool setDischarge(int Discharge) ;
 		int8_t rdcfg_debug(uint8_t r_config[8]);
 		void balance_cfg(int cell, uint8_t cfg[6]);
 		void wrcfg(uint8_t config[6]);
@@ -198,6 +201,8 @@ class LTC68041
 		void cnvCellVolt();
 		void cnvStatus();
 		void cnvAuxVolt();
+		void cnvConfigRead();	
+		void cnvConfigWrite();
 		void adax();
 		float cnvITMP(uint8_t STAR[6], float offset);
 		uint8_t rdcv_debug(uint16_t cell_codes[cellNum]);
