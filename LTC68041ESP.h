@@ -120,7 +120,6 @@ static const unsigned int crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 
 
 
 
-
 class LTC68041
    {
     public:
