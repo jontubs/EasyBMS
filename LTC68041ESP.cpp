@@ -15,7 +15,7 @@ https://github.com/jontubs/EasyBMS
 #include <SPI.h>
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 Creating of the object LTC68041
 *********************************************************************************************************/
 LTC68041::LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin)
@@ -28,7 +28,7 @@ LTC68041::LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin)
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 Reads and parses the LTC6804 cell voltage registers.
 This function will initialize all 6804 variables and the SPI port.
 *********************************************************************************************************/
@@ -42,7 +42,7 @@ void LTC68041::initialize()
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 Simple Serial print to check in object exists. Just for Debug 
 *********************************************************************************************************/
 void LTC68041::helloworld()
@@ -58,7 +58,7 @@ void LTC68041::helloworld()
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 Wake isoSPI up from idle state
 Generic wakeup commannd to wake isoSPI up out of idle 
 *********************************************************************************************************/
@@ -72,7 +72,7 @@ void LTC68041::wakeup_idle()
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 Calculates the CRC sum of some data bytes given by the pointer "data" with the length "len"
 *********************************************************************************************************/
 uint16_t LTC68041::pec15_calc(uint8_t len, uint8_t *data)
@@ -89,7 +89,7 @@ uint16_t LTC68041::pec15_calc(uint8_t len, uint8_t *data)
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 Writes and read a set number of bytes using the SPI port.
 [in] uint8_t tx_data[] array of data to be written on the SPI port
 [in] uint8_t tx_len length of the tx_data array
@@ -111,7 +111,7 @@ void LTC68041::spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_dat
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 Writes and read a set number of bytes using the SPI port without expecting an answer
 uint8_t len, // Option: Number of bytes to be written on the SPI port
 uint8_t data[] //Array of bytes to be written on the SPI port
@@ -127,7 +127,7 @@ void LTC68041::spi_write_array(uint8_t len, uint8_t data[])
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 calculates the bitpattern in the config for Undervoltage detection  
 the config has to be written to the chip after this!
 *********************************************************************************************************/
@@ -141,7 +141,7 @@ void LTC68041::initCFGR()
   CFGRw[5] = 0 ;
 }
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 calculates the bitpattern in the config for Undervoltage detection  
 the config has to be written to the chip after this!
 *********************************************************************************************************/
@@ -157,7 +157,7 @@ void LTC68041::setVUV(float Undervoltage)
 }
 		
 		
-/*******************************************************************************************************
+/*!******************************************************************************************************
 calculates the bitpattern in the config for Overvoltage detection  
 the config has to be written to the chip after this!
 *********************************************************************************************************/
@@ -174,7 +174,7 @@ void LTC68041::setVOV(float Overvoltage)
   CFGRw[3] = (uint8_t)(VOV>>4) ;
 }
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 Reads configuration registers of a LTC6804
 
 [out] uint8_t r_config[8] is an array that the function stores the read configuration data. 
@@ -240,7 +240,7 @@ int8_t LTC68041::rdcfg_debug(uint8_t r_config[8]) //An array that the function s
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 Sets  the configuration array for cell balancing
   1. Reset all Discharge Pins
   2. Calculate adcv cmd PEC and load pec into cmd array
@@ -267,7 +267,7 @@ void LTC68041::balance_cfg(int cell, uint8_t cfg[6])
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 This command will write the configuration registers of the LTC6804-1.
 Write the LTC6804 configuration register
   1. Load cmd array with the write configuration command and PEC
@@ -322,7 +322,7 @@ void LTC68041::wrcfg(uint8_t config[6])//A two dimensional array of the configur
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 Perform LUT lookup of cell SOC based on cell open circuit voltage.
 SOC based on OCV lookup table.
 SOC as a function of open cell voltage is non=linear, a lookup table seems to
@@ -369,7 +369,7 @@ float LTC68041::cell_compute_soc(float voc) {
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
  Clears the LTC6804 Auxiliary registers
 
  The command clears the Auxiliary registers and intiallizes
@@ -404,7 +404,7 @@ void LTC68041::clraux()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 Reads and parses the LTC6804 cell voltage registers.
 
  The function is used to read the cell codes of the LTC6804.
@@ -471,7 +471,7 @@ uint8_t LTC68041::rdcv() // Array of the parsed cell codes
 
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
  The function is used to read the of the Config Register Group A  of one LTC6804.
  This function sends the read commands, parses the data and stores the response in CFGR.
  
@@ -532,7 +532,7 @@ uint8_t LTC68041::rdcfg()
 
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
  The function is used to read the of the Auxiliary Register Group A  of one LTC6804.
  This function sends the read commands, parses the data and stores the response in AVAR.
  
@@ -592,7 +592,7 @@ uint8_t LTC68041::rdauxa()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
  The function is used to read the of the Auxiliary Register Group B  of one LTC6804.
  This function sends the read commands, parses the data and stores the response in AVBR.
  
@@ -652,7 +652,7 @@ uint8_t LTC68041::rdauxb()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
  The function is used to read the of the Status Register Group A of one LTC6804.
  This function sends the read commands, parses the data and stores the response in STAR.
  
@@ -714,7 +714,7 @@ uint8_t LTC68041::rdstata()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
  The function is used to read the of the Status Register Group B  of one LTC6804.
  This function sends the read commands, parses the data and stores the response in STBR.
  
@@ -774,7 +774,7 @@ uint8_t LTC68041::rdstatb()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
  The command clears the cell voltage registers and intiallizes
  all values to 1. The register will read back hexadecimal 0xFF
  after the command is sent.
@@ -807,7 +807,7 @@ void LTC68041::clrcell()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
  The function reads a single GPIO voltage register and stores thre read data
  in the *data point as a byte array. This function is rarely used outside of
  the LTC68041::rdaux() command.
@@ -857,7 +857,7 @@ void LTC68041::rdaux_reg(uint8_t reg, uint8_t *data)
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 Maps  global ADC control variables to the appropriate control bytes for each of the different ADC commands
 
 [in] uint8_t MD The adc conversion mode
@@ -883,7 +883,7 @@ void LTC68041::set_adc(uint8_t MD, uint8_t DCP, uint8_t CH, uint8_t CHG )
 }
 */
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 A complete SPI communication check.
 Reads the Status register and checks PECs of the response
 No other command necessary, Just call this and get 
@@ -954,7 +954,7 @@ void LTC68041::checkSPI()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 A complete SPI communication check.
 Reads the Status register and checks PECs of the response
 No other command necessary, Just call this and get 
@@ -1010,7 +1010,7 @@ bool LTC68041::checkSPI_mute()
 }
 
  
-/********************************************************************************************************
+/*!*******************************************************************************************************
  The function is used to read the  parsed GPIO codes of the LTC6804.
  This function will send the requested  read commands parse the data
  and store the gpio voltages in aux_codes variable 
@@ -1115,7 +1115,7 @@ int8_t LTC68041::rdaux(uint8_t reg, uint16_t aux_codes[6])
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
   Starts cell voltage ADC conversions of the LTC6804 Cpin inputs.
   The type of ADC conversion executed can be changed by setting the associated global variables:
 
@@ -1172,7 +1172,7 @@ void LTC68041::adcv_test1()
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 Starts cell voltage conversion with test values from selftest 2
 *********************************************************************************************************/
 void LTC68041::adcv_test2()
@@ -1200,7 +1200,7 @@ void LTC68041::adcv_test2()
 }
 
 
-/*******************************************************************************************************
+/*!******************************************************************************************************
 Kind of debug function, a lot information are printed via Serial
 *********************************************************************************************************/
 bool LTC68041::rdstatus_debug()
@@ -1298,7 +1298,7 @@ bool LTC68041::rdstatus_debug()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 Debug function 
 Starts the conversion and reads the Statusregister
 Calculates the internal Temperature
@@ -1375,7 +1375,7 @@ float  LTC68041::rditemp_debug()
   }  
 }
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 Starts the conversion and reads the Statusregister
 Calculates the internal Temperature
 Checks the CRC and returns the Temperature
@@ -1445,7 +1445,7 @@ float  LTC68041::rditemp()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 calculates the Voltage out of the cellcodes
 stored into cell voltages
 *********************************************************************************************************/
@@ -1458,7 +1458,7 @@ void LTC68041::cnvCellVolt()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 calculates the Voltage out of the cellcodes
 stored into cell voltages
 *********************************************************************************************************/
@@ -1476,7 +1476,7 @@ void LTC68041::cnvAuxVolt()
 	}
 }
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
 converts the complete Status register with all values included
 *********************************************************************************************************/
 void LTC68041::cnvStatus() 
@@ -1545,7 +1545,48 @@ void LTC68041::cnvStatus()
    
 }
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
+converts the complete config register from the last Read 
+*********************************************************************************************************/
+void LTC68041::cnvConfigRead() 
+{
+	
+   
+   
+}
+
+
+/*!*******************************************************************************************************
+converts the complete config register from the next Write
+*********************************************************************************************************/
+void LTC68041::cnvConfigWrite() 
+{
+   
+}
+/*!*******************************************************************************************************
+Reset all Discharge bits in the WriteConfig
+*********************************************************************************************************/
+bool LTC68041::setDischarge(int Discharge) 
+{
+	if(Discharge>0 & Discharge<12)
+	{
+		    //bitWrite(, Discharge);
+		    return 1; //success
+	}
+	else
+	{
+		return 0;//wrong value
+	}
+   
+}
+
+
+void LTC68041::resetDischargeAll()
+{
+	Discharge=0;
+}
+
+/*!*******************************************************************************************************
   Starts an ADC conversions of the LTC6804 GPIO inputs.
   The type of ADC conversion executed can be changed by setting the associated global variables.
   1. Load adax command into cmd array
@@ -1568,7 +1609,7 @@ void LTC68041::adax()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
   Starts an ADC conversions of all cell voltages and the LTC6804 GPIO inputs.
   The type of ADC conversion executed can be changed by setting the associated global variables.
   1. Load command into cmd array
@@ -1591,7 +1632,7 @@ void LTC68041::adcvax()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
   Starts an ADC conversions of the status values
   The type of ADC conversion executed can be changed by setting the associated global variables.
   1. Load command into cmd array
@@ -1613,7 +1654,7 @@ void LTC68041::adstat()
   spi_write_array(4,cmd);
 }
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
   Starts an ADC conversions of the open wire check with pullup
   The type of ADC conversion executed can be changed by the command value
   1. Load command into cmd array
@@ -1636,7 +1677,7 @@ void LTC68041::adowpu()
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
   Starts an ADC conversions of the open wire check with pulldown
   The type of ADC conversion executed can be changed by the command value
   1. Load command into cmd array
@@ -1658,8 +1699,8 @@ void LTC68041::adowpd()
   spi_write_array(4,cmd);
 }
 
-/********************************************************************************************************
-Converts the raw  
+/*!*******************************************************************************************************
+Converts the raw temperature data into internal temperature
 *********************************************************************************************************/
 float LTC68041::cnvITMP(uint8_t STAR[6], float offset)
 {
@@ -1754,7 +1795,7 @@ uint8_t LTC68041::rdcv_debug(uint16_t cell_codes[cellNum]) // Array of the parse
 }
 
 
-/********************************************************************************************************
+/*!*******************************************************************************************************
  The function reads a single cell voltage register and stores the read data
  in the *data point as a byte array. This function is rarely used outside of
  the LTC68041::rdcv() command.
