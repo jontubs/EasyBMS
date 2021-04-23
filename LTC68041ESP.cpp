@@ -1811,7 +1811,29 @@ void LTC68041::rdcv_reg(uint8_t reg, uint8_t *data)
 
 }
 
-void printArray(uint8_t size, uint8_t *data)
+void printArrayByte(uint8_t size, uint8_t *data)
+{
+	Serial.print("\nArray Content | ");
+	for(int i=0;i<size;i++)
+	{
+		Serial.print(data[i], HEX);
+		Serial.print("\t");
+	}
+	Serial.print(" |END \n");
+}
+
+void printArrayBool(uint8_t size, bool *data)
+{
+	Serial.print("\nArray Content | ");
+	for(int i=0;i<size;i++)
+	{
+		Serial.print(data[i]);
+		Serial.print("\t");
+	}
+	Serial.print(" |END \n");
+}
+
+void printArrayFloat(uint8_t size, float *data)
 {
 	Serial.print("\nArray Content | ");
 	for(int i=0;i<size;i++)
