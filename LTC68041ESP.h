@@ -136,6 +136,7 @@ class LTC68041
 		uint8_t SizeConfigReg = 6; //Len Conifiguration Register = 6
 		uint8_t SizeStatusRegA = 6; //Len Conifiguration Register = 6
 		uint8_t SizeStatusRegB = 6; //Len Conifiguration Register = 6
+		uint8_t SizeReg = 6; 		//All registers have the same length
 		uint8_t PEClen = 2;		//Len PEC Bytes = 2   	
 		uint8_t CFGRw[8];		//Configuration Register Group Write
 		uint8_t CFGRr[8];		//Configuration Register Group Read
@@ -223,5 +224,7 @@ class LTC68041
 
    };
 
-void printArray(uint8_t size, uint8_t *data);
+void printArrayByte(uint8_t size, uint8_t *data);
+void printArrayBool(uint8_t size, bool *data);
+void printArrayFloat(uint8_t size, float *data);
 #endif
