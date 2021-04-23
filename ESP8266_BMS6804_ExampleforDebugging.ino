@@ -70,11 +70,11 @@ void loop()
   printArrayByte(LTC.SizeReg, LTC.STAR);
   Serial.print("\r\n");
 
-  Serial.print("\n Cell Undervoltage detected ");
+  Serial.print("\n Cell Undervoltage detected: ");
   printArrayBool(LTC.cellNum, LTC.CUV);
   Serial.print("\r\n");
 
-  Serial.print("\n Cell Overvoltage detected ");
+  Serial.print("\n Cell Overvoltage detected:  ");
   printArrayBool(LTC.cellNum, LTC.COV);
   Serial.print("\r\n");
   
