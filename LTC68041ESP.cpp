@@ -1391,7 +1391,6 @@ float  LTC68041::rditemp()
   uint16_t cmd_pec;
   uint16_t ITMP;
   uint8_t data[8];
-  float InternalTemp;
   float offset=10;
   
   
@@ -1420,15 +1419,16 @@ float  LTC68041::rditemp()
   spi_write_read(cmd, 4, response, (SizeStatusRegA+PEClen));         //Read the configuration data of all ICs on the daisy chain into
 
   
-  //Serial.print("\nSTAR:");
+
   for(int i=0; i<SizeStatusRegA;i++)
   {
 	STAR[i]=response[i];
   }
 
-  
-  InternalTemp=cnvITMP(STAR,offset);
 
+  InternalTemp=cnvITMP(STAR,offset);
+    Serial.print("\nTEMP:");
+    Serial.print(InternalTemp);
 
   response_pec_calc = pec15_calc(SizeStatusRegA, response);
   response_pec=(response[SizeStatusRegA]<<8)+response[SizeStatusRegA+1];
