@@ -91,6 +91,7 @@ uint16_t LTC68041::pec15_calc(uint8_t len, uint8_t *data)
 
 /*!******************************************************************************************************
 Writes and read a set number of bytes using the SPI port.
+Tested and runs fine
 [in] uint8_t tx_data[] array of data to be written on the SPI port
 [in] uint8_t tx_len length of the tx_data array
 [out] uint8_t rx_data array that read data will be written too.
@@ -108,6 +109,7 @@ void LTC68041::spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_dat
     rx_data[i]=SPI.transfer(1);
   }
   digitalWrite(csPin, HIGH);
+
 }
 
 
@@ -151,7 +153,7 @@ void LTC68041::setVUV(float Undervoltage)
 
   VUV=(Undervoltage/(0.0001*16))-1;		//calc bitpattern for UV 
   
-  CFGRw[0] = 0xFE;
+  //CFGRw[0] = 0xFE;
   CFGRw[1] = (uint8_t) VUV;        //0x4E1 ; // 2.0V
   CFGRw[2] = (VUV >> 8) & 0x0F ;
 }
@@ -169,7 +171,7 @@ void LTC68041::setVOV(float Overvoltage)
 
   VOV=(Overvoltage/(0.0001*16));		//Calc bitpattern for OV 
   
-  CFGRw[0] = 0xFE;
+  //CFGRw[0] = 0xFE;
   CFGRw[2] = CFGRw[2] | ((VOV&0x0F) << 4) ;
   CFGRw[3] = (uint8_t)(VOV>>4) ;
 }
@@ -696,7 +698,8 @@ uint8_t LTC68041::rdstata()
   data_counter= BYT_IN_REG;
   received_pec = (received_data[data_counter] << 8) + received_data[data_counter+1]; //The received PEC for the current_ic is transmitted as the 7th and 8th
   //(uint8_t len, uint8_t *data)
-  data_pec = pec15_calc(BYT_IN_REG, received_data); 
+  data_pec = pec15_calc(BYT_IN_REG, received_data);
+  
   if (received_pec != data_pec)
   {
     pec_error = -1;                             //The pec_error variable is simply set negative if any PEC errors
@@ -707,7 +710,9 @@ uint8_t LTC68041::rdstata()
 	//6
     //Copy 	Target   	Source  	Size
   	memcpy( STAR, received_data, BYT_IN_REG );
+  	Serial.println("Data Ok");
   }
+  printArrayByte(BYT_IN_REG, STAR); 
   //printArray(NUM_RX_BYT, received_data);
   //7
   return(pec_error);
@@ -1131,7 +1136,8 @@ void LTC68041::adcv()
 
   //1
   cmd[0] = 0x03;
-  cmd[1] = 0x60;
+  cmd[1] = 0x70;  //70=mit discharge , 60=Ohne
+
   //2
   cmd_pec = pec15_calc(2, cmd);
   cmd[2] = (uint8_t)(cmd_pec >> 8);
@@ -1298,9 +1304,10 @@ bool LTC68041::rdstatus_debug()
 }
 
 
+
 /*!*******************************************************************************************************
-Debug function 
 Starts the conversion and reads the Statusregister
+All in one Function for debugging
 Calculates the internal Temperature
 Checks the CRC and returns the Temperature
 If itmp=5555, then CRC is wrong  
@@ -1310,83 +1317,6 @@ float  LTC68041::rditemp_debug()
   uint16_t response_pec_calc;
   uint16_t response_pec;			
   uint8_t cmd[8];
-  uint8_t STAR[6];		//Status register A
-  uint8_t response[16];
-  uint16_t cmd_pec;
-  uint16_t ITMP;
-  uint8_t data[8];
-  float InternalTemp;
-  float offset=10;
-  
-  
-  //Start Status group ADC Conversion and Poll Status
-  cmd[0] = 0x5;		//ADSTAT (all)
-  cmd[1] = 0x68;		//ADSTAT (all)
-  cmd_pec = pec15_calc(2, cmd);
-  cmd[2] = (uint8_t)(cmd_pec >> 8);
-  cmd[3] = (uint8_t)(cmd_pec);
-  
-  //spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-  
-  
-  digitalWrite(csPin, LOW);
-  SPI.transfer(cmd[0]);  
-  SPI.transfer(cmd[1]);  
-  SPI.transfer(cmd[2]);  
-  SPI.transfer(cmd[3]);
-
-  digitalWrite(csPin, HIGH);
-// spi_write_array(uint8_t len, uint8_t data[])
-	
-  delay(10); //wait for conversion
-
-
-  cmd[0] = 0x00;		//Read Status Register Group A
-  cmd[1] = 0x10;		//Read Status Register Group A
-  cmd_pec = pec15_calc(2, cmd);
-  cmd[2] = (uint8_t)(cmd_pec >> 8);
-  cmd[3] = (uint8_t)(cmd_pec);
-
- 	
-  spi_write_read(cmd, 4, response, (SizeStatusRegA+PEClen));         //Read the configuration data of all ICs on the daisy chain into
-
-  
-  //Serial.print("\nSTAR:");
-  for(int i=0; i<SizeStatusRegA;i++)
-  {
-	STAR[i]=response[i];
-  }
-
-  
-  InternalTemp=cnvITMP(STAR,offset);
-
-
-  response_pec_calc = pec15_calc(SizeStatusRegA, response);
-  response_pec=(response[SizeStatusRegA]<<8)+response[SizeStatusRegA+1];
- 
-  
-  if(response_pec==response_pec_calc&(response_pec_calc!=0))
-  {
-  	return InternalTemp;
-  }
-  else
-  {
-  	return 5555;
-  }  
-}
-
-/*!*******************************************************************************************************
-Starts the conversion and reads the Statusregister
-Calculates the internal Temperature
-Checks the CRC and returns the Temperature
-If itmp=5555, then CRC is wrong  
-*********************************************************************************************************/
-float  LTC68041::rditemp()
-{
-  uint16_t response_pec_calc;
-  uint16_t response_pec;			
-  uint8_t cmd[8];
-  uint8_t STAR[6];		//Status register A
   uint8_t response[16];
   uint16_t cmd_pec;
   uint16_t ITMP;
@@ -1426,7 +1356,7 @@ float  LTC68041::rditemp()
   }
 
 
-  InternalTemp=cnvITMP(STAR,offset);
+  InternalTemp=cnvITMP(offset);
     Serial.print("\nTEMP:");
     Serial.print(InternalTemp);
 
@@ -1482,13 +1412,13 @@ converts the complete Status register with all values included
 void LTC68041::cnvStatus() 
 {
 	SOC=(uint16_t)STAR[0];
-	SOC=SOC+((uint16_t)STAR[1] << 8);
+	SOC=SOC+(((uint16_t)STAR[1]) << 8);
 	SumCellVoltages=SOC*20*100E-6;		//Sum of All Cells Voltage = SOC • 100µV • 20
     for(int i=0;i<cellNum;i++)
     {
     	cellVoltage[i]=cellCodes[i] * 100E-6;
 	}
-   ITMP=STAR[2] | ((uint16_t)STAR[3])<<8;
+   ITMP=((uint16_t)STAR[2]) + (((uint16_t)STAR[3])<<8);
    //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
    InternalTemp= ((float)ITMP * 100E-6 / 7.5E-3 - 273.0 ) + OffsetTemp;
    //Calc Analog Supply Voltage
@@ -1650,7 +1580,7 @@ void LTC68041::adstat()
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
 
-  //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+  wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   spi_write_array(4,cmd);
 }
 
@@ -1702,7 +1632,7 @@ void LTC68041::adowpd()
 /*!*******************************************************************************************************
 Converts the raw temperature data into internal temperature
 *********************************************************************************************************/
-float LTC68041::cnvITMP(uint8_t STAR[6], float offset)
+float LTC68041::cnvITMP(float offset)
 {
   float InternalTemp;
   uint16_t ITMP;

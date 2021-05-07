@@ -197,14 +197,13 @@ class LTC68041
 		void adcv_test2();
 		bool rdstatus_debug();
 		float  rditemp_debug();
-		float  rditemp();
 		void cnvCellVolt();
 		void cnvStatus();
 		void cnvAuxVolt();
 		void cnvConfigRead();	
 		void cnvConfigWrite();
 		void adax();
-		float cnvITMP(uint8_t STAR[6], float offset);
+		float cnvITMP(float offset);
 		uint8_t rdcv_debug(uint16_t cell_codes[cellNum]);
 		uint8_t rdauxa();
 		uint8_t rdauxb();
