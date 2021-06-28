@@ -434,7 +434,7 @@ uint8_t LTC68041::rdcv() // Array of the parsed cell codes
   uint8_t cell_data[100];
   //1.
   //Lies alle
-  //läuft von 1-4
+  //lï¿½uft von 1-4
     for (uint8_t cell_reg = 1; cell_reg<5; cell_reg++)                    //executes once for each of the LTC6804 cell voltage registers
     {
       data_counter = 0;
@@ -710,9 +710,9 @@ uint8_t LTC68041::rdstata()
 	//6
     //Copy 	Target   	Source  	Size
   	memcpy( STAR, received_data, BYT_IN_REG );
-  	Serial.println("Data Ok");
+  	//Serial.println("Data Ok");
   }
-  printArrayByte(BYT_IN_REG, STAR); 
+  //printArrayByte(BYT_IN_REG, STAR); 
   //printArray(NUM_RX_BYT, received_data);
   //7
   return(pec_error);
@@ -1284,7 +1284,7 @@ bool LTC68041::rdstatus_debug()
   Serial.print("\nITMP:");
   Serial.print(ITMP);
 
-  //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
+  //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (ï¿½C) = ITMP ï¿½ 100ï¿½V/7.5mV/ï¿½C ï¿½ 273ï¿½C
   InternalTemp= ((float)ITMP * 100E-6 / 7.5E-3 - 273.0 ) +offset;
   Serial.print("\nInternalTemp:");
   Serial.print(InternalTemp);
@@ -1413,13 +1413,13 @@ void LTC68041::cnvStatus()
 {
 	SOC=(uint16_t)STAR[0];
 	SOC=SOC+(((uint16_t)STAR[1]) << 8);
-	SumCellVoltages=SOC*20*100E-6;		//Sum of All Cells Voltage = SOC • 100µV • 20
+	SumCellVoltages=SOC*20*100E-6;		//Sum of All Cells Voltage = SOC ï¿½ 100ï¿½V ï¿½ 20
     for(int i=0;i<cellNum;i++)
     {
     	cellVoltage[i]=cellCodes[i] * 100E-6;
 	}
    ITMP=((uint16_t)STAR[2]) + (((uint16_t)STAR[3])<<8);
-   //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
+   //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (ï¿½C) = ITMP ï¿½ 100ï¿½V/7.5mV/ï¿½C ï¿½ 273ï¿½C
    InternalTemp= ((float)ITMP * 100E-6 / 7.5E-3 - 273.0 ) + OffsetTemp;
    //Calc Analog Supply Voltage
    VA=(uint16_t)STAR[4];
@@ -1637,7 +1637,7 @@ float LTC68041::cnvITMP(float offset)
   float InternalTemp;
   uint16_t ITMP;
   ITMP=STAR[2] | ((uint16_t)STAR[3])<<8;
-  //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP • 100µV/7.5mV/°C – 273°C
+  //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (ï¿½C) = ITMP ï¿½ 100ï¿½V/7.5mV/ï¿½C ï¿½ 273ï¿½C
   InternalTemp= ((float)ITMP * 100E-6 / 7.5E-3 - 273.0 ) + offset;
   return InternalTemp;
 }
@@ -1670,7 +1670,7 @@ uint8_t LTC68041::rdcv_debug(uint16_t cell_codes[cellNum]) // Array of the parse
   uint8_t cell_data[100];
   //1.
   //Lies alle
-  //läuft von 1-4
+  //lï¿½uft von 1-4
     for (uint8_t cell_reg = 1; cell_reg<5; cell_reg++)                    //executes once for each of the LTC6804 cell voltage registers
     {
       data_counter = 0;
