@@ -7,7 +7,6 @@ int error = 0;
 //byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin
 static LTC68041 LTC = LTC68041(D7, D6, D5, D8);
 
-static bool flip;
 
 // the setup function runs once when you press reset or power the board
 void setup()
@@ -25,8 +24,11 @@ void setup()
 // the loop function runs over and over again forever
 void loop()
 {
-
-  //Local Variables
+  //Set some config values
+  LTC.CFGRw[0]=0xFE;   //0x07;     //0xFE;
+  LTC.CFGRw[5]=0;
+  LTC.setVUV(3.1);    //undervoltage detection
+  LTC.setVOV(3.9);    //overvoltage detection
 
   if (LTC.checkSPI_mute())
   {
