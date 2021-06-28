@@ -1,26 +1,25 @@
- 
+#include <Arduino.h>
 #include <LTC68041ESP.h>
 #include <SPI.h>
 
 int error = 0;
 
 //byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin
-static LTC68041 LTC = LTC68041(D7,D6,D5,D8);
+static LTC68041 LTC = LTC68041(D7, D6, D5, D8);
 
 static bool flip;
 
-
 // the setup function runs once when you press reset or power the board
-void setup() 
+void setup()
 {
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(D5, OUTPUT);
   pinMode(D1, OUTPUT);
 
-  Serial.begin(115200);
+  Serial.begin(74880);
   Serial.println("Init");
-  LTC.initialize();  //Initialize LTC6804 hardware
+  LTC.initialize(); //Initialize LTC6804 hardware
 }
 
 // the loop function runs over and over again forever
@@ -29,7 +28,6 @@ void loop()
 
   //Local Variables
 
-  
   if (LTC.checkSPI_mute())
   {
     digitalWrite(D1, HIGH);
@@ -45,7 +43,7 @@ void loop()
   LTC.adax();
   LTC.adstat();
 
-  delay(20);   //Wait until everything is finished
+  delay(20); //Wait until everything is finished
 
   //Read the raw values into the controller
   LTC.rdcv();
@@ -57,7 +55,7 @@ void loop()
   LTC.cnvCellVolt();
   LTC.cnvAuxVolt();
   LTC.cnvStatus();
-  
+
   Serial.print("\nCell Voltages: ");
   printArrayFloat(LTC.cellNum, LTC.cellVoltage);
   Serial.print("\r\n");
@@ -77,7 +75,6 @@ void loop()
   Serial.print("\n Cell Overvoltage detected:  ");
   printArrayBool(LTC.cellNum, LTC.COV);
   Serial.print("\r\n");
-  
-  delay(200);
 
+  delay(200);
 }
