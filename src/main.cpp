@@ -31,12 +31,12 @@ void loop()
   if (LTC.checkSPI_mute())
   {
     digitalWrite(D1, HIGH);
-    //Serial.println("\nSPI ok");
+    Serial.println("\nSPI ok");
   }
   else
   {
     digitalWrite(D1, LOW);
-    //Serial.println("\nSPI lost");
+    Serial.println("\nSPI lost");
   }
   //Start different Analog-Digital-Conversions in the Chip
   LTC.adcv();
@@ -56,6 +56,10 @@ void loop()
   LTC.cnvAuxVolt();
   LTC.cnvStatus();
 
+  Serial.print("\nIC Temperature: ");
+  Serial.print(LTC.InternalTemp);
+  Serial.print("\r\n");
+  /*
   Serial.print("\nCell Voltages: ");
   printArrayFloat(LTC.cellNum, LTC.cellVoltage);
   Serial.print("\r\n");
@@ -75,6 +79,6 @@ void loop()
   Serial.print("\n Cell Overvoltage detected:  ");
   printArrayBool(LTC.cellNum, LTC.COV);
   Serial.print("\r\n");
-
+  */
   delay(200);
 }
