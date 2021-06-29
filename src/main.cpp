@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <LTC68041ESP.h>
+#include <LTC6804.h>
 #include <SPI.h>
 
 int error = 0;
