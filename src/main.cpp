@@ -4,7 +4,7 @@
 
 int error = 0;
 
-//byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin
+//byte pinMOSI, byte pinMISO, byte pinCLK, byte pinCS
 static LTC68041 LTC = LTC68041(D7, D6, D5, D8);
 
 static unsigned long timer;

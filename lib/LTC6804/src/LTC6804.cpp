@@ -18,13 +18,14 @@ https://github.com/jontubs/EasyBMS
 /*!*******************************************************************************************************
 Creating of the object LTC68041
 *********************************************************************************************************/
-LTC68041::LTC68041(byte pinMOSI, byte pinMISO, byte pinCLK, byte csPin)
+LTC68041::LTC68041(byte pMOSI, byte pMISO, byte pCLK, byte pCS)
+  : pinMOSI(pMOSI), pinMISO(pMISO), pinCLK(pCLK), pinCS(pCS)
 {
-	Serial.print("Objekt angelegt");
-	pinMode(pinMOSI, OUTPUT);
-  	pinMode(pinMISO, INPUT);
-  	pinMode(pinCLK, OUTPUT);
-  	pinMode(csPin, OUTPUT);
+    Serial.print("Objekt angelegt");
+    pinMode(pinMOSI, OUTPUT);
+    pinMode(pinMISO, INPUT);
+    pinMode(pinCLK, OUTPUT);
+    pinMode(pinCS, OUTPUT);
 }
 
 
@@ -34,9 +35,6 @@ This function will initialize all 6804 variables and the SPI port.
 *********************************************************************************************************/
 void LTC68041::initialize()
 {
-  SPI.setBitOrder(MSBFIRST);
-  SPI.setDataMode(SPI_MODE3);
-  SPI.setClockDivider(SPI_CLOCK_DIV128);
   SPI.begin();
   initCFGR();
 }
@@ -54,7 +52,7 @@ void LTC68041::helloworld()
 	Serial.print("\t Clock:");
 	Serial.print(pinCLK);
 	Serial.print("\t Chipselect:");
-	Serial.println(csPin);
+	Serial.println(pinCS);
 }
 
 
@@ -64,10 +62,10 @@ Generic wakeup commannd to wake isoSPI up out of idle
 *********************************************************************************************************/
 void LTC68041::wakeup_idle()
 {
-  digitalWrite(csPin, LOW);
+  digitalWrite(pinCS, LOW);
   delay(2); //Guarantees the isoSPI will be in ready mode
   //SPI.transfer(dummy);  //Test
-  digitalWrite(csPin, HIGH);
+  digitalWrite(pinCS, HIGH);
   delay(2); //Guarantees the isoSPI will be in ready mode
 }
 
@@ -99,7 +97,8 @@ Tested and runs fine
 *********************************************************************************************************/
 void LTC68041::spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_data, uint8_t rx_len)
 {
-  digitalWrite(csPin, LOW);
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+  digitalWrite(pinCS, LOW);
   for (uint8_t i = 0; i < tx_len; i++)
   {
     SPI.transfer(tx_Data[i]);
@@ -108,7 +107,8 @@ void LTC68041::spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_dat
   {
     rx_data[i]=SPI.transfer(1);
   }
-  digitalWrite(csPin, HIGH);
+  digitalWrite(pinCS, HIGH);
+  SPI.endTransaction();
 
 }
 
@@ -120,12 +120,14 @@ uint8_t data[] //Array of bytes to be written on the SPI port
 *********************************************************************************************************/
 void LTC68041::spi_write_array(uint8_t len, uint8_t data[])
 {
-  digitalWrite(csPin, LOW);
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+  digitalWrite(pinCS, LOW);
   for (uint8_t i = 0; i < len; i++)
   {
     SPI.transfer((int8_t)data[i]);
   }
- digitalWrite(csPin, HIGH);
+ digitalWrite(pinCS, HIGH);
+ SPI.endTransaction();
 }
 
 
@@ -208,9 +210,7 @@ int8_t LTC68041::rdcfg_debug(uint8_t r_config[8]) //An array that the function s
 	//2
 	//wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 	//3
-	digitalWrite(csPin, LOW);
 	spi_write_read(cmd, 4, rx_data, (BYTES_IN_REG));         //Read the configuration data of all ICs on the daisy chain into
-	digitalWrite(csPin, HIGH);;                          //rx_data[] array
 	
 	Serial.print("gelesene Config: ");
 	for (int i = 0 ; i < 8; i++)
@@ -317,9 +317,7 @@ void LTC68041::wrcfg(uint8_t config[6])//A two dimensional array of the configur
   //4
   //wakeup_idle ();                                 //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
   //5
-  digitalWrite(csPin, LOW);
   spi_write_array(CMD_LEN, cmd);
-  digitalWrite(csPin, HIGH);;
   free(cmd);
 }
 
@@ -400,9 +398,7 @@ void LTC68041::clraux()
   //3
   wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
   //4
-  digitalWrite(csPin, LOW);
   spi_write_read(cmd,4,0,0);
-  digitalWrite(csPin, HIGH);
 }
 
 
@@ -806,9 +802,7 @@ void LTC68041::clrcell()
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
-  digitalWrite(csPin, LOW);
   spi_write_read(cmd,4,0,0);
-  digitalWrite(csPin, HIGH);;
 }
 
 
@@ -855,9 +849,7 @@ void LTC68041::rdaux_reg(uint8_t reg, uint8_t *data)
   //3
   wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
   //4
-  digitalWrite(csPin, LOW);
   spi_write_read(cmd,4,data,REG_LEN);
-  digitalWrite(csPin, HIGH);;
 
 }
 
@@ -922,7 +914,8 @@ void LTC68041::checkSPI()
 
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
   digitalWrite(LED_BUILTIN, HIGH);
-  digitalWrite(csPin, LOW);
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+  digitalWrite(pinCS, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
   SPI.transfer(cmd[2]);  
@@ -931,7 +924,8 @@ void LTC68041::checkSPI()
   {
     response[i] =SPI.transfer(0); 
   }
-  digitalWrite(csPin, HIGH);
+  digitalWrite(pinCS, HIGH);
+  SPI.endTransaction();
   digitalWrite(LED_BUILTIN, LOW);  
   Serial.print("\nRSP: ");
   for(int i=0; i<(SizeConfigReg+PEClen);i++)
@@ -987,8 +981,8 @@ bool LTC68041::checkSPI_mute()
 
 
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-
-  digitalWrite(csPin, LOW);
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+  digitalWrite(pinCS, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
   SPI.transfer(cmd[2]);  
@@ -997,7 +991,8 @@ bool LTC68041::checkSPI_mute()
   {
     response[i] =SPI.transfer(0); 
   }
-  digitalWrite(csPin, HIGH);
+  digitalWrite(pinCS, HIGH);
+  SPI.endTransaction();
 
 
   response_pec_calc = pec15_calc(SizeConfigReg, response);
@@ -1172,9 +1167,7 @@ void LTC68041::adcv_test1()
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
-  digitalWrite(csPin, LOW);
   spi_write_array(4,cmd);
-  digitalWrite(csPin,HIGH);
 }
 
 
@@ -1200,9 +1193,7 @@ void LTC68041::adcv_test2()
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
   //4
-  digitalWrite(csPin, LOW);
   spi_write_array(4,cmd);
-  digitalWrite(csPin,HIGH);
 }
 
 
@@ -1228,13 +1219,14 @@ bool LTC68041::rdstatus_debug()
   cmd_pec = pec15_calc(2, cmd);
   cmd[2] = (uint8_t)(cmd_pec >> 8);
   cmd[3] = (uint8_t)(cmd_pec);
-  digitalWrite(csPin, LOW);
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+  digitalWrite(pinCS, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
   SPI.transfer(cmd[2]);  
   SPI.transfer(cmd[3]);
 
-  digitalWrite(csPin, HIGH);
+  digitalWrite(pinCS, HIGH);
 // spi_write_array(uint8_t len, uint8_t data[])
 	
   delay(10); //wait for conversion
@@ -1247,7 +1239,7 @@ bool LTC68041::rdstatus_debug()
   cmd[3] = (uint8_t)(cmd_pec);
 
   //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-  digitalWrite(csPin, LOW);
+  digitalWrite(pinCS, LOW);
   SPI.transfer(cmd[0]);  
   SPI.transfer(cmd[1]);  
   SPI.transfer(cmd[2]);  
@@ -1257,7 +1249,8 @@ bool LTC68041::rdstatus_debug()
   {
     response[i] =SPI.transfer(1); 
   }
-  digitalWrite(csPin, HIGH);
+  digitalWrite(pinCS, HIGH);
+  SPI.endTransaction();
 
   
   Serial.print("\nRSP Status A: ");
