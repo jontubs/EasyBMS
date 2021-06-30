@@ -116,20 +116,20 @@ public:
     uint8_t	STBR[8];		//Status Register Group B
     uint8_t REV;				//Revision Code Device Revision Code. See Revision Code and Reserved Bits in Operation Section.
     uint8_t RSVD;				//Reserved Bits See Revision Code and Reserved Bits in Operation Section.
-    uint16_t cellCodes[cellNum];  //Raw values extracted from the voltage registers
-    uint16_t AuxCodes[gpioNum];	//Auxilury Raw Data
+    uint16_t cellCodes[CELLNUM];  //Raw values extracted from the voltage registers
+    uint16_t AuxCodes[GPIONUM];	//Auxilury Raw Data
     uint16_t SOC;			//Sum of all cells Raw
     uint16_t ITMP;			//InternalTemperautr Raw
     uint16_t VA;			//Analog Power Supply Voltage 16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
     uint16_t VD;			//Digital Power Supply Voltage 16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
-    bool CUV[cellNum];		//Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
-    bool COV[cellNum];		//Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
+    bool CUV[CELLNUM];		//Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
+    bool COV[CELLNUM];		//Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
     uint16_t Discharge;	//Array of bits, if 1=Discharge Active	if 0=Off
     bool MUXFAIL;			//Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
     bool THSD;				//Thermal Shutdown Status Read: 0 -> Thermal Shutdown Has Not Occurred 1 -> Thermal Shutdown Has Occurred THSD Bit Cleared to 0 on Read of Status RegIster Group B
 
-    float cellVoltage[cellNum];	//Cell voltage on volt
-    float gpioVoltage[gpioNum];	//Voltage on the GPIO pins
+    float cellVoltage[CELLNUM];	//Cell voltage on volt
+    float gpioVoltage[GPIONUM];	//Voltage on the GPIO pins
     float SumCellVoltages;	//Sum of all cell voltages
     float AnalogSupplyVoltage;	//16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
     float DigitalSupplyVoltage; //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
@@ -192,8 +192,8 @@ private:
     byte pinMOSI;	//Master Out Slave In Pin
     byte pinMISO;	//Master In Slave Out Pin
     byte pinCLK;	//Clock Pin
-    static constexpr byte cellNum = 12;  //Number of cells checked by this Chip
-    static constexpr byte gpioNum = 5;  //Number of GPIOs
+    static constexpr byte CELLNUM = 12;  //Number of cells checked by this Chip
+    static constexpr byte GPIONUM = 5;  //Number of GPIOs
     static constexpr uint16_t crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //!<precomputed CRC15 Table
     0xff35, 0x2cc8, 0xe951, 0xe263, 0x27fa, 0xad97, 0x680e, 0x633c, 0xa6a5, 0x7558, 0xb0c1,
     0xbbf3, 0x7e6a, 0x5990, 0x9c09, 0x973b, 0x52a2, 0x815f, 0x44c6, 0x4ff4, 0x8a6d, 0x5b2e,
