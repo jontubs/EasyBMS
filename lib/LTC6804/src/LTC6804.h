@@ -3,7 +3,7 @@
 This library is based on the LTC68041.cpp by linear technology.
 http://www.linear.com/product/LTC6804-1
 
-I modified it make it compatible with the ESP8622
+I modified it to make it compatible with the ESP8622
 https://github.com/jontubs/EasyBMS
 ***********************************************************/
 
