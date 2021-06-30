@@ -224,7 +224,6 @@ private:
 
 };
 
-void printArrayByte(uint8_t size, uint8_t *data);
-void printArrayBool(uint8_t size, bool *data);
-void printArrayFloat(uint8_t size, float *data);
+template<typename T, std::size_t N>
+void printArray(std::array<T, N> &arr);
 #endif

@@ -1743,34 +1743,28 @@ void LTC68041::rdcv_reg(uint8_t reg, uint8_t *data)
     spi_write_read(cmd,4,data,REG_LEN);
 }
 
-void printArrayByte(uint8_t size, uint8_t *data)
+inline void serialPrint(uint8_t data)
 {
-    Serial.print("\nArray Content | ");
-    for(int i=0;i<size;i++)
-    {
-        Serial.print(data[i], HEX);
-        Serial.print("\t");
-    }
-    Serial.print(" |END \n");
+    Serial.print(data, HEX);
 }
 
-void printArrayBool(uint8_t size, bool *data)
+inline void serialPrint(bool data)
 {
-    Serial.print("\nArray Content | ");
-    for(int i=0;i<size;i++)
-    {
-        Serial.print(data[i]);
-        Serial.print("\t");
-    }
-    Serial.print(" |END \n");
+    Serial.print(data);
 }
 
-void printArrayFloat(uint8_t size, float *data)
+inline void serialPrint(float data)
+{
+    Serial.print(data);
+}
+
+template<typename T, std::size_t N>
+void printArray(std::array<T, N> &arr)
 {
     Serial.print("\nArray Content | ");
-    for(int i=0;i<size;i++)
+    for(const auto &element : arr)
     {
-        Serial.print(data[i]);
+        serialPrint(element);
         Serial.print("\t");
     }
     Serial.print(" |END \n");
