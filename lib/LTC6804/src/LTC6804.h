@@ -10,94 +10,138 @@ https://github.com/jontubs/EasyBMS
 #ifndef LTC68041_H
 #define LTC68041_H
 
-
-//#ifndef LTC6804_CS
-//#define LTC6804_CS D8
-//#endif
-
-
-
-
-
-
-
-
-/*!
-
- |MD| Dec  | ADC Conversion Model|
- |--|------|---------------------|
- |01| 1    | Fast            |
- |10| 2    | Normal        |
- |11| 3    | Filtered          |
-*/
-#define MD_FAST 1
-#define MD_NORMAL 2
-#define MD_FILTERED 3
-
-
-/*!
-|CH | Dec  | Channels to convert |
-|---|------|---------------------|
-|000| 0    | All Cells       |
-|001| 1    | Cell 1 and Cell 7   |
-|010| 2    | Cell 2 and Cell 8   |
-|011| 3    | Cell 3 and Cell 9   |
-|100| 4    | Cell 4 and Cell 10  |
-|101| 5    | Cell 5 and Cell 11  |
-|110| 6    | Cell 6 and Cell 12  |
-*/
-
-#define CELL_CH_ALL 0
-#define CELL_CH_1and7 1
-#define CELL_CH_2and8 2
-#define CELL_CH_3and9 3
-#define CELL_CH_4and10 4
-#define CELL_CH_5and11 5
-#define CELL_CH_6and12 6
-
-
-
-/*!
-
-  |CHG | Dec  |Channels to convert   |
-  |----|------|----------------------|
-  |000 | 0    | All GPIOS and 2nd Ref|
-  |001 | 1    | GPIO 1           |
-  |010 | 2    | GPIO 2               |
-  |011 | 3    | GPIO 3           |
-  |100 | 4    | GPIO 4           |
-  |101 | 5    | GPIO 5         |
-  |110 | 6    | Vref2            |
-*/
-
-#define AUX_CH_ALL 0
-#define AUX_CH_GPIO1 1
-#define AUX_CH_GPIO2 2
-#define AUX_CH_GPIO3 3
-#define AUX_CH_GPIO4 4
-#define AUX_CH_GPIO5 5
-#define AUX_CH_VREF2 6
-
-//uint8_t CHG = 0; //!< aux channels to be converted
-/*!****************************************************
- \brief Controls if Discharging transitors are enabled
- or disabled during Cell conversions.
-
-|DCP | Discharge Permitted During conversion |
-|----|----------------------------------------|
-|0   | No - discharge is not permitted         |
-|1   | Yes - discharge is permitted           |
-
-********************************************************/
-#define DCP_DISABLED 0
-#define DCP_ENABLED 1
-
-
-
-
 class LTC68041
 {
 public:
+
+    /**
+     * @brief ADC Conversion Mode
+     *
+     * | 27kHz Mode (Fast)           |
+     * | 7kHz Mode (Normal)          |
+     * | 26Hz Mode (Filtered)        |
+     * | 14kHz Mode                  |
+     * | 3kHz Mode                   |
+     * | 2kHz Mode                   |
+     */
+    enum class ADCFilterMode {
+        FAST,
+        NORMAL,
+        FILTERED,
+        BANDWIDTH_27KHZ = FAST,
+        BANDWIDTH_7KHZ  = NORMAL,
+        BANDWIDTH_26HZ  = FILTERED,
+        BANDWIDTH_14KHZ,
+        BANDWIDTH_3KHZ,
+        BANDWIDTH_2KHZ,
+    };
+
+    /**
+     * @brief Cell Channels to convert
+     *
+     * |CH | Dec  | Channels to convert |
+     * |---|------|---------------------|
+     * |000| 0    | All Cells           |
+     * |001| 1    | Cell 1 and Cell 7   |
+     * |010| 2    | Cell 2 and Cell 8   |
+     * |011| 3    | Cell 3 and Cell 9   |
+     * |100| 4    | Cell 4 and Cell 10  |
+     * |101| 5    | Cell 5 and Cell 11  |
+     * |110| 6    | Cell 6 and Cell 12  |
+     */
+    enum CellChannel : std::uint16_t {
+        CH_ALL           = 0b000,
+        CH_CELL_1_AND_7  = 0b001,
+        CH_CELL_2_AND_8  = 0b010,
+        CH_CELL_3_AND_9  = 0b011,
+        CH_CELL_4_AND_10 = 0b100,
+        CH_CELL_5_AND_11 = 0b101,
+        CH_CELL_6_AND_12 = 0b110,
+   };
+
+    /**
+     * @brief AUX Channels to convert
+     *
+     * |CHG | Dec  | Channels to convert  |
+     * |----|------|----------------------|
+     * |000 | 0    | All GPIOS and 2nd Ref|
+     * |001 | 1    | GPIO 1               |
+     * |010 | 2    | GPIO 2               |
+     * |011 | 3    | GPIO 3               |
+     * |100 | 4    | GPIO 4               |
+     * |101 | 5    | GPIO 5               |
+     * |110 | 6    | Vref2                |
+     */
+    enum AuxChannel : std::uint16_t {
+        CHG_ALL   = 0b000,
+        CHG_GPIO1 = 0b001,
+        CHG_GPIO2 = 0b010,
+        CHG_GPIO3 = 0b011,
+        CHG_GPIO4 = 0b100,
+        CHG_GPIO5 = 0b101,
+        CHG_VREF2 = 0b110,
+    };
+
+    /**
+     * @brief Status Group to select
+     *
+     * |CHST| Dec  |  Status Group    |
+     * |----|------|------------------|
+     * |000 | 0    | OC, ITMP, VA, VD |
+     * |001 | 1    | SOC              |
+     * |010 | 2    | ITMP             |
+     * |011 | 3    | VA               |
+     * |100 | 4    | VD               |
+     */
+    enum StatusGroup : std::uint16_t {
+        CHST_ALL  = 0b000,
+        CHST_SOC  = 0b001,
+        CHST_ITMP = 0b010,
+        CHST_VA   = 0b011,
+        CHST_VD   = 0b100,
+    };
+
+    /**
+     * @brief Self-Test mode selection
+     *
+     * |ST| Dec  | Self-Test Mode |
+     * |--|------|----------------|
+     * |01| 1    | Self-Test 1    |
+     * |10| 2    | Self-Test 2    |
+     */
+    enum SelfTestMode : std::uint16_t {
+        ST_SELF_TEST_1 = (0b01 << STPos),
+        ST_SELF_TEST_2 = (0b10 << STPos),
+    };
+
+    /**
+     * @brief Controls if Discharging transitors are enabled
+     *        or disabled during Cell conversions.
+     *
+     * |DCP | Discharge Permitted During conversion  |
+     * |----|----------------------------------------|
+     * |0   | No - discharge is not permitted        |
+     * |1   | Yes - discharge is permitted           |
+     */
+    enum DischargeCtrl : std::uint16_t {
+        DCP_DISABLED = (0b0 << DCPPos),
+        DCP_ENABLED  = (0b1 << DCPPos),
+    };
+
+    /**
+     * @brief Pull up/Pull down selection for open wire test
+     *
+     * |PUP | Pull-Up/Pull-Down Current |
+     * |    | for Open-Wire Conversions |
+     * |----|---------------------------|
+     * |0   | Pull-Down Current         |
+     * |1   | Pull-Up Current           |
+     */
+    enum PUPCtrl : std::uint16_t {
+        PUP_PULL_DOWN = (0b0 << PUPPos),
+        PUP_PULL_UP   = (0b1 << PUPPos),
+    };
+
     uint8_t dummy = 0x55;		//Just a dummy byte
     uint8_t SizeConfigReg = 6; //Len Conifiguration Register = 6
     uint8_t SizeStatusRegA = 6; //Len Conifiguration Register = 6
@@ -185,6 +229,53 @@ public:
 protected:
 
 private:
+
+    enum Commands : std::uint16_t {
+        WRCFG = 0x0001,
+        RDCFG = 0x0002,
+        RDCVA = 0x0004,
+        RDCVB = 0x0006,
+        RDCVC = 0x0008,
+        RDCVD = 0x000A,
+        RDAUXA = 0x000C,
+        RDAUXB = 0x000E,
+        RDSTATA = 0x0010,
+        RDSTATB = 0x0012,
+        ADCV = 0x0260,
+        ADOW = 0x0228,
+        CVST = 0x0207,
+        ADAX = 0x0460,
+        AXST = 0x0407,
+        ADSTAT = 0x0468,
+        STATST = 0x040F,
+        ADCVAX = 0X046F,
+        CLRCELL = 0x0711,
+        CLRAUX = 0x0712,
+        CLRSTAT = 0x0713,
+        PLADC = 0x0714,
+        DIAGN = 0x0715,
+        WRCOMM = 0x0721,
+        RDCOMM = 0x0722,
+        STCOMM = 0x0723
+    }
+
+    /**
+     * @brief ADC Conversion Mode
+     *
+     * |MD| Dec  |          ADC Conversion Mode                |
+     * |--|------|---------------------|-----------------------|
+     * |  |      | ADCOPT(CFGR0[0]) = 0| ADCOPT(CFGR0[0]) = 1  |
+     * |--|------|---------------------|-----------------------|
+     * |01| 1    | 27kHz Mode (Fast)   | 14kHz Mode            |
+     * |10| 2    | 7kHz Mode (Normal)  | 3kHz Mode             |
+     * |11| 3    | 26Hz Mode (Filtered)| 2kHz Mode             |
+     */
+    enum ADCMode : std::uint16_t {
+        MD_FAST     = (0b01 << MDPos),
+        MD_NORMAL   = (0b10 << MDPos),
+        MD_FILTERED = (0b11 << MDPos),
+    };
+
     //internal variables
     byte index;
 
@@ -194,6 +285,10 @@ private:
     byte pinCLK;	//Clock Pin
     static constexpr byte CELLNUM = 12;  //Number of cells checked by this Chip
     static constexpr byte GPIONUM = 5;  //Number of GPIOs
+    static constexpr int MDPos = 7;
+    static constexpr int DCPPos = 4;
+    static constexpr int STPos = 5;
+    static constexpr int PUPPos = 6;
     static constexpr uint16_t crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //!<precomputed CRC15 Table
     0xff35, 0x2cc8, 0xe951, 0xe263, 0x27fa, 0xad97, 0x680e, 0x633c, 0xa6a5, 0x7558, 0xb0c1,
     0xbbf3, 0x7e6a, 0x5990, 0x9c09, 0x973b, 0x52a2, 0x815f, 0x44c6, 0x4ff4, 0x8a6d, 0x5b2e,
