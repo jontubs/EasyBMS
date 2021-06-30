@@ -571,14 +571,14 @@ uint8_t LTC68041::rdauxa()
     data_pec = pec15_calc(BYT_IN_REG, received_data);
     if (received_pec != data_pec)
     {
-            pec_error = -1;                             //The pec_error variable is simply set negative if any PEC errors
+        pec_error = -1;                             //The pec_error variable is simply set negative if any PEC errors
         //are detected in the serial data
     }
     else
     {
         //6
         //Copy 	Target   	Source  	Size
-            memcpy( AVAR, received_data, BYT_IN_REG );
+        memcpy( AVAR, received_data, BYT_IN_REG );
     }
     //printArray(NUM_RX_BYT, received_data);
     //7
