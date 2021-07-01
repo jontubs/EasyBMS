@@ -151,11 +151,11 @@ public:
     void wakeup_idle();
     void initCFGR();
     std::uint8_t rdcfg();
-    void setVUV(float Undervoltage);
-    void setVOV(float Overvoltage);
+    void setVUV(const float Undervoltage);
+    void setVOV(const float Overvoltage);
     void resetDischargeAll();
     bool setDischarge(int Discharge) ;
-    int8_t rdcfg_debug(std::uint8_t r_config[8]);
+    int8_t rdcfg_debug();
     void balance_cfg(int cell, std::uint8_t cfg[6]);
     void wrcfg(std::uint8_t config[6]);
     float cell_compute_soc(float voc);
@@ -164,8 +164,7 @@ public:
     void rdcv_reg(std::uint8_t reg, std::uint8_t *data);
     void clrcell();
     void rdaux_reg(std::uint8_t reg, std::uint8_t *data);
-    void checkSPI();
-    bool checkSPI_mute();
+    bool checkSPI(const bool dbgOut);
     int8_t rdaux(std::uint8_t reg, std::uint16_t aux_codes[6]);
     void adcv();
     void adcv_test1();
@@ -407,9 +406,14 @@ private:
         0x4e3e, 0x450c, 0x8095
     };
 
-    std::uint16_t pec15_calc(std::uint8_t len, std::uint8_t *data);
-    void spi_write_read(std::uint8_t tx_Data[], std::uint8_t tx_len, std::uint8_t *rx_data, std::uint8_t rx_len);
-    void spi_write_array(std::uint8_t len, std::uint8_t data[]);
+    template<std::size_t N>
+    std::uint16_t calcPEC15(const std::array<std::uint8_t, N> &data);
+
+    template<std::size_t N1, std::size_t N2>
+    void spi_write_read(const std::array<std::uint8_t, N1> &tx_Data, std::array<std::uint8_t, N2> &rx_data);
+
+    template<std::size_t N>
+    void spi_write_array(const std::array<std::uint8_t, N> &data);
 
 };
 
