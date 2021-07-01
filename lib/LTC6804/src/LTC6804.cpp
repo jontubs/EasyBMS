@@ -19,7 +19,7 @@ https://github.com/jontubs/EasyBMS
 Creating of the object LTC68041
 *********************************************************************************************************/
 LTC68041::LTC68041(byte pMOSI, byte pMISO, byte pCLK, byte pCS)
-  : pinMOSI(pMOSI), pinMISO(pMISO), pinCLK(pCLK), pinCS(pCS)
+  : pinMOSI(pMOSI), pinMISO(pMISO), pinCLK(pCLK), pinCS(pCS), regs({})
 {
     Serial.print("Objekt angelegt");
     pinMode(pinMOSI, OUTPUT);
