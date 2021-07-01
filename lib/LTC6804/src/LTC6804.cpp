@@ -15,9 +15,9 @@ https://github.com/jontubs/EasyBMS
 #include <SPI.h>
 
 
-/*!*******************************************************************************************************
-Creating of the object LTC68041
-*********************************************************************************************************/
+/**
+ * @brief Creating of the object LTC68041
+ */
 LTC68041::LTC68041(byte pMOSI, byte pMISO, byte pCLK, byte pCS)
   : pinMOSI(pMOSI), pinMISO(pMISO), pinCLK(pCLK), pinCS(pCS), regs({})
 {
@@ -28,21 +28,19 @@ LTC68041::LTC68041(byte pMOSI, byte pMISO, byte pCLK, byte pCS)
     pinMode(pinCS, OUTPUT);
 }
 
-
-/*!******************************************************************************************************
-Reads and parses the LTC6804 cell voltage registers.
-This function will initialize all 6804 variables and the SPI port.
-*********************************************************************************************************/
+/**
+ * @brief Reads and parses the LTC6804 cell voltage registers.
+ *        This function will initialize all 6804 variables and the SPI port.
+ */
 void LTC68041::initialize()
 {
     SPI.begin();
     initCFGR();
 }
 
-
-/*!******************************************************************************************************
-Simple Serial print to check in object exists. Just for Debug 
-*********************************************************************************************************/
+/**
+ * @brief Simple Serial print to check if object exists. Just for Debug
+ */
 void LTC68041::helloworld()
 {
     Serial.print("Hello World, used Pins are MOSI:");
@@ -55,11 +53,10 @@ void LTC68041::helloworld()
     Serial.println(pinCS);
 }
 
-
-/*!******************************************************************************************************
-Wake isoSPI up from idle state
-Generic wakeup commannd to wake isoSPI up out of idle 
-*********************************************************************************************************/
+/**
+ * @brief Wake isoSPI up from idle state
+ *        Generic wakeup commannd to wake isoSPI up out of idle 
+ */
 void LTC68041::wakeup_idle()
 {
     digitalWrite(pinCS, LOW);
@@ -71,42 +68,46 @@ void LTC68041::wakeup_idle()
 
 
 /*!******************************************************************************************************
-Calculates the CRC sum of some data bytes given by the pointer "data" with the length "len"
+Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
-uint16_t LTC68041::pec15_calc(uint8_t len, uint8_t *data)
+template<std::size_t N>
+std::uint16_t LTC68041::calcPEC15(const std::array<std::uint8_t, N> &data)
 {
-    uint16_t remainder,addr;
+    std::uint16_t remainder,addr;
 
     remainder = 16;//initialize the PEC
-    for (uint8_t i = 0; i<len; i++) // loops for each byte in data array
+    for (const auto &element : data) // loops for each byte in data array
     {
-        addr = ((remainder>>7)^data[i])&0xff;//calculate PEC table address
-        remainder = (remainder<<8)^crc15Table[addr];
+        addr = ((remainder >> 7) ^ element) & 0xff;//calculate PEC table address
+        remainder = (remainder << 8) ^ crc15Table[addr];
     }
-    return(remainder*2);//The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
+
+    return(remainder * 2);//The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
 }
 
 
 /*!******************************************************************************************************
 Writes and read a set number of bytes using the SPI port.
 Tested and runs fine
-[in] uint8_t tx_data[] array of data to be written on the SPI port
-[in] uint8_t tx_len length of the tx_data array
-[out] uint8_t rx_data array that read data will be written too.
-[in] uint8_t rx_len number of bytes to be read from the SPI port.
+[in] std::array<std::uint8_t, N1> &tx_Data array of data to be written on the SPI port
+[out] std::array<std::uint8_t, N2> &rx_data array that read data will be written too.
 *********************************************************************************************************/
-void LTC68041::spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_data, uint8_t rx_len)
+template<std::size_t N1, std::size_t N2>
+void LTC68041::spi_write_read(const std::array<std::uint8_t, N1> &tx_Data, std::array<std::uint8_t, N2> &rx_data)
 {
     SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
-    for (uint8_t i = 0; i < tx_len; i++)
+
+    for (const auto &element : tx_data)
     {
-        SPI.transfer(tx_Data[i]);
+        SPI.transfer(element);
     }
-    for (uint8_t i = 0; i < rx_len; i++)
+
+    for (auto &element : rx_data)
     {
-        rx_data[i]=SPI.transfer(1);
+        element = SPI.transfer(1);
     }
+
     digitalWrite(pinCS, HIGH);
     SPI.endTransaction();
 
@@ -115,17 +116,19 @@ void LTC68041::spi_write_read(uint8_t tx_Data[], uint8_t tx_len, uint8_t *rx_dat
 
 /*!******************************************************************************************************
 Writes and read a set number of bytes using the SPI port without expecting an answer
-uint8_t len, // Option: Number of bytes to be written on the SPI port
-uint8_t data[] //Array of bytes to be written on the SPI port
+std::array<std::uint8_t, N> &data //Array of bytes to be written on the SPI port
 *********************************************************************************************************/
-void LTC68041::spi_write_array(uint8_t len, uint8_t data[])
+template<std::size_t N>
+void LTC68041::spi_write_array(const std::array<std::uint8_t, N> &data)
 {
     SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
-    for (uint8_t i = 0; i < len; i++)
+
+    for (const auto &element : data)
     {
-        SPI.transfer((int8_t)data[i]);
+        SPI.transfer(element);
     }
+
     digitalWrite(pinCS, HIGH);
     SPI.endTransaction();
 }
@@ -137,105 +140,58 @@ the config has to be written to the chip after this!
 *********************************************************************************************************/
 void LTC68041::initCFGR()
 { 
-    CFGRw[0] = 0xFE;
-    CFGRw[1] = 0 ;
-    CFGRw[2] = 0 ;
-    CFGRw[3] = 0 ;
-    CFGRw[4] = 0 ;
-    CFGRw[5] = 0 ;
+    regs.CFGR[CFGR0] = 0xFE;
+    regs.CFGR[CFGR1] = 0 ;
+    regs.CFGR[CFGR2] = 0 ;
+    regs.CFGR[CFGR3] = 0 ;
+    regs.CFGR[CFGR4] = 0 ;
+    regs.CFGR[CFGR5] = 0 ;
 }
 
 /*!******************************************************************************************************
 calculates the bitpattern in the config for Undervoltage detection  
 the config has to be written to the chip after this!
 *********************************************************************************************************/
-void LTC68041::setVUV(float Undervoltage)
+void LTC68041::setVUV(const float Undervoltage)
 {
-    uint16_t VUV=0;
+    uint16_t VUV = (Undervoltage / (0.0001 * 16)) - 1;		//calc bitpattern for UV
 
-    VUV=(Undervoltage/(0.0001*16))-1;		//calc bitpattern for UV
-
-    //CFGRw[0] = 0xFE;
-    CFGRw[1] = (uint8_t) VUV;        //0x4E1 ; // 2.0V
-    CFGRw[2] = (VUV >> 8) & 0x0F ;
+    //regs.CFGR[CFGR0] = 0xFE;
+    regs.CFGR[CFGR1] = VUV & 0xFF;        //0x4E1 ; // 2.0V
+    regs.CFGR[CFGR2] = (regs.CFGR[CFGR2] & 0xF0) | ((VUV >> 8) & 0x0F);
 }
 
 /*!******************************************************************************************************
 calculates the bitpattern in the config for Overvoltage detection  
 the config has to be written to the chip after this!
 *********************************************************************************************************/
-void LTC68041::setVOV(float Overvoltage)
+void LTC68041::setVOV(const float Overvoltage)
 {
     //float Undervoltage=3.123;
     //float Overvoltage=3.923;
-    uint16_t VOV=0;
+    uint16_t VOV = (Overvoltage / (0.0001 * 16));		//Calc bitpattern for OV
 
-    VOV=(Overvoltage/(0.0001*16));		//Calc bitpattern for OV
-
-    //CFGRw[0] = 0xFE;
-    CFGRw[2] = CFGRw[2] | ((VOV&0x0F) << 4) ;
-    CFGRw[3] = (uint8_t)(VOV>>4) ;
+    //regs.CFGR[CFGR0] = 0xFE;
+    regs.CFGR[CFGR2] = (regs.CFGR[CFGR2] & 0x0F) | ((VOV << 4) & 0xF0) ;
+    regs.CFGR[CFGR3] = (VOV >> 4) & 0xFF;
 }
 
 /*!*******************************************************************************************************
 Reads configuration registers of a LTC6804
-
-[out] uint8_t r_config[8] is an array that the function stores the read configuration data. 
-return int8_t, PEC Status.
-  0: Data read back has matching PEC
-  -1: Data read back has incorrect PEC
-  
 Giving additional Debug infos via Serial
 *********************************************************************************************************/
 
-int8_t LTC68041::rdcfg_debug(uint8_t r_config[8]) //An array that the function stores the read configuration data.                 
+void LTC68041::rdcfg_dbg()
 {
-    const uint8_t BYTES_IN_REG = 8;
-
-    uint8_t cmd[4];
-    uint8_t *rx_data_pointer;
-    int8_t pec_error = 0;
-    uint16_t data_pec;
-    uint16_t received_pec;
-
-    uint8_t rx_data[8];
-
-    //1
-    cmd[0] = 0x00;
-    cmd[1] = 0x02;
-    cmd[2] = 0x2b;
-    cmd[3] = 0x0A;
-
-    //2
-    //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-    //3
-    spi_write_read(cmd, 4, rx_data, (BYTES_IN_REG));         //Read the configuration data of all ICs on the daisy chain into
+    rdcfg();         //Read the configuration data of all ICs on the daisy chain into
 
     Serial.print("gelesene Config: ");
-    for (int i = 0 ; i < 8; i++)
+    for (const auto &element : regs.CFGR)
     {
-        Serial.print(rx_data[i], HEX);
+        Serial.print(element, HEX);
         Serial.print("\t");
     }
     Serial.print("\n");
-
-    //into the r_config array as well as check the received Config data
-    //for any bit errors
-    //4.a
-    for (uint8_t current_byte = 0; current_byte < BYTES_IN_REG; current_byte++)
-    {
-        r_config[current_byte] = rx_data[current_byte + (BYTES_IN_REG)];
-    }
-    //4.b
-    received_pec = (r_config[6]<<8) + r_config[7];
-    data_pec = pec15_calc(6, &r_config[0]);
-    if (received_pec != data_pec)
-    {
-        pec_error = -1;
-    }
-
-    //5
-    return(pec_error);
 }
 
 
@@ -244,6 +200,7 @@ Sets  the configuration array for cell balancing
   1. Reset all Discharge Pins
   2. Calculate adcv cmd PEC and load pec into cmd array
   Discharge this cell (1-12), disable all other, IF -1 then all off
+  TODO: refactor
 *********************************************************************************************************/
 void LTC68041::balance_cfg(int cell, uint8_t cfg[6])
 {
@@ -328,6 +285,7 @@ voc: Cell open circuit voltage, Volts.
 return Function returns SOC from 0-1.
 
 Funktion ist kaputt , muss ich mal fixen
+TODO: refactor
 *********************************************************************************************************/
 float LTC68041::cell_compute_soc(float voc) {
     
@@ -887,7 +845,7 @@ No other command necessary, Just call this and get
  5. compare PECs
  6. Send Serial message with result
 *********************************************************************************************************/
-void LTC68041::checkSPI()
+bool LTC68041::checkSPI(const bool dbgOut)
 {
     uint16_t response_pec_calc;
     uint16_t response_pec;
@@ -898,109 +856,78 @@ void LTC68041::checkSPI()
     cmd[1] = 0x02;
     cmd[2] = 0x2b;
     cmd[3] = 0x0A;
-    Serial.print("CMD: ");
-    Serial.print(cmd[0], HEX);
-    Serial.print(" ");
-    Serial.print(cmd[1], HEX);
-    Serial.print(" ");
-    Serial.print(cmd[2], HEX);
-    Serial.print(" ");
-    Serial.print(cmd[3], HEX);
 
-    //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-    digitalWrite(LED_BUILTIN, HIGH);
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
-    digitalWrite(pinCS, LOW);
-    SPI.transfer(cmd[0]);
-    SPI.transfer(cmd[1]);
-    SPI.transfer(cmd[2]);
-    SPI.transfer(cmd[3]);
-    for(int i=0; i<(SizeConfigReg+PEClen);i++)
+    if(dgbOut)
     {
-        response[i] =SPI.transfer(0);
-    }
-    digitalWrite(pinCS, HIGH);
-    SPI.endTransaction();
-    digitalWrite(LED_BUILTIN, LOW);
-    Serial.print("\nRSP: ");
-    for(int i=0; i<(SizeConfigReg+PEClen);i++)
-    {
-        Serial.print(response[i], HEX);
+        Serial.print("CMD: ");
+        Serial.print(cmd[0], HEX);
         Serial.print(" ");
+        Serial.print(cmd[1], HEX);
+        Serial.print(" ");
+        Serial.print(cmd[2], HEX);
+        Serial.print(" ");
+        Serial.println(cmd[3], HEX);
     }
-    response_pec_calc = pec15_calc(SizeConfigReg, response);
-    response_pec=(response[SizeConfigReg]<<8)+response[SizeConfigReg+1];
-    Serial.print("\nPEC Calc: ");
-    Serial.print(response_pec_calc, HEX);
-    Serial.print("\nPEC Resp: ");
-    Serial.print(response_pec, HEX);
-
-    if(response_pec==response_pec_calc&(response_pec_calc!=0))
-    {
-        Serial.print("\nPEC was correct ");
-    }
-    else
-    {
-        Serial.print("\nPEC was NOT correct, check Hardware ");
-    }
-    Serial.print("\n\n");
-}
-
-
-/*!*******************************************************************************************************
-A complete SPI communication check.
-Reads the Status register and checks PECs of the response
-No other command necessary, Just call this and get 
-[return] bool Result of the Check 1=Communication ok, 0=failure
-
-This command does not send messages via Serial
- 1. Request for status register
- 2. Read fully status register
- 3. calc PEC from response
- 4. extract PEC from response
- 5. compare PECs
- 6. Return Result   
-*********************************************************************************************************/
-bool LTC68041::checkSPI_mute()
-{
-    uint16_t response_pec_calc;
-    uint16_t response_pec;
-    uint8_t cmd[8];
-
-    uint8_t response[16];
-    cmd[0] = 0x00;
-    cmd[1] = 0x02;
-    cmd[2] = 0x2b;
-    cmd[3] = 0x0A;
-
 
     //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+    if(dgbOut)
+        digitalWrite(LED_BUILTIN, HIGH);
+
     SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
     SPI.transfer(cmd[0]);
     SPI.transfer(cmd[1]);
     SPI.transfer(cmd[2]);
     SPI.transfer(cmd[3]);
+    
     for(int i=0; i<(SizeConfigReg+PEClen);i++)
     {
         response[i] =SPI.transfer(0);
     }
+
     digitalWrite(pinCS, HIGH);
     SPI.endTransaction();
 
-    response_pec_calc = pec15_calc(SizeConfigReg, response);
-    response_pec=(response[SizeConfigReg]<<8)+response[SizeConfigReg+1];
-
-    if(response_pec==response_pec_calc&(response_pec_calc!=0))
+    if(dgbOut)
     {
-        return 1;
+        digitalWrite(LED_BUILTIN, LOW);
+        Serial.print("RSP: ");
+
+        for(int i=0; i<(SizeConfigReg+PEClen);i++)
+        {
+            Serial.print(response[i], HEX);
+            Serial.print(" ");
+        }
+
+        Serial.println("");
+    }
+
+    response_pec_calc = pec15_calc(SizeConfigReg, response);
+    response_pec = (response[SizeConfigReg]<<8)+response[SizeConfigReg+1];
+
+    if(dgbOut)
+    {
+        Serial.print("PEC Calc: ");
+        Serial.println(response_pec_calc, HEX);
+        Serial.print("PEC Resp: ");
+        Serial.println(response_pec, HEX);
+    }
+
+    if(response_pec == response_pec_calc&(response_pec_calc!=0))
+    {
+        if(dgbOut)
+            Serial.println("PEC was correct");
+
+        return true;
     }
     else
     {
-        return 0;
+        if(dgbOut)
+            Serial.println("PEC was NOT correct, check Hardware");
+
+        return false;
     }
 }
-
  
 /*!*******************************************************************************************************
  The function is used to read the  parsed GPIO codes of the LTC6804.
@@ -1350,7 +1277,7 @@ void LTC68041::cnvCellVolt()
 {
     for(int i=0;i<CELLNUM;i++)
     {
-        cellVoltage[i]=cellCodes[i] * 100E-6;
+        cellVoltage[i] = cellCodes[i] * 100E-6;
     }
 }
 
@@ -1620,62 +1547,23 @@ Reads and parses the LTC6804 cell voltage registers and returns some additional 
 *********************************************************************************************************/
 uint8_t LTC68041::rdcv_debug(uint16_t cell_codes[CELLNUM]) // Array of the parsed cell codes
 {
-
-    const uint8_t NUM_RX_BYT = 8;
-    const uint8_t BYT_IN_REG = 6;
-    const uint8_t CELL_IN_REG = 3;
-
-    uint8_t *cell_pointer;
-    uint8_t pec_error = 0;
-    uint16_t parsed_cell;
-    uint16_t received_pec;
-    uint16_t data_pec;
-    uint8_t data_counter=0; //data counter
-    uint8_t cell_data[100];
     //1.
     //Lies alle
     //l�uft von 1-4
-    for (uint8_t cell_reg = 1; cell_reg<5; cell_reg++)                    //executes once for each of the LTC6804 cell voltage registers
-    {
-        data_counter = 0;
-        rdcv_reg(cell_reg, cell_data );                //Reads a single Cell voltage register
+    rdcv();
 
-        //2.
-        for (uint8_t current_cell = 0; current_cell<CELL_IN_REG; current_cell++)  // This loop parses the read back data into cell voltages, it
-        {
-            // loops once for each of the 3 cell voltage codes in the register
-
-            parsed_cell = cell_data[data_counter] + (cell_data[data_counter + 1] << 8);//Each cell code is received as two bytes and is combined to
-            // create the parsed cell voltage code
-
-            cell_codes[current_cell  + ((cell_reg - 1) * CELL_IN_REG)] = parsed_cell;
-            data_counter = data_counter + 2;                       //Because cell voltage codes are two bytes the data counter
-            //must increment by two for each parsed cell code
-        }
-        //3.
-        received_pec = (cell_data[data_counter] << 8) + cell_data[data_counter+1]; //The received PEC for the current_ic is transmitted as the 7th and 8th
-        //after the 6 cell voltage data bytes
-        data_pec = pec15_calc(BYT_IN_REG, &cell_data[NUM_RX_BYT]);
-        if (received_pec != data_pec)
-        {
-            pec_error = -1;                             //The pec_error variable is simply set negative if any PEC errors
-            //are detected in the serial data
-        }
-        data_counter=data_counter+2;                        //Because the transmitted PEC code is 2 bytes long the data_counter
-        //must be incremented by 2 bytes to point to the next ICs cell voltage data
-    }
-
-    float CellVoltage[12];
     Serial.print("\nCellCodes: ");
     cnvCellVolt();
+
     for (int i = 0 ; i < 12; i++)
     {
-        CellVoltage[i]= cellVoltage[i];
         Serial.print(cellCodes[i], HEX);
         Serial.print("\t");
     }
+
     Serial.print("\nCell Voltages: ");
-        for (int i = 0 ; i < 12; i++)
+
+    for (int i = 0 ; i < 12; i++)
     {
         Serial.print(CellVoltage[i]);
         Serial.print("\t");
