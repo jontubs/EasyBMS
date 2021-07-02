@@ -52,7 +52,7 @@ public:
      * |101| 5    | Cell 5 and Cell 11  |
      * |110| 6    | Cell 6 and Cell 12  |
      */
-    enum CellChannel : std::uint16_t {
+    enum class CellChannel : std::uint16_t {
         CH_ALL           = 0b000,
         CH_CELL_1_AND_7  = 0b001,
         CH_CELL_2_AND_8  = 0b010,
@@ -75,7 +75,7 @@ public:
      * |101 | 5    | GPIO 5               |
      * |110 | 6    | Vref2                |
      */
-    enum AuxChannel : std::uint16_t {
+    enum class AuxChannel : std::uint16_t {
         CHG_ALL   = 0b000,
         CHG_GPIO1 = 0b001,
         CHG_GPIO2 = 0b010,
@@ -96,7 +96,7 @@ public:
      * |011 | 3    | VA               |
      * |100 | 4    | VD               |
      */
-    enum StatusGroup : std::uint16_t {
+    enum class StatusGroup : std::uint16_t {
         CHST_ALL  = 0b000,
         CHST_SOC  = 0b001,
         CHST_ITMP = 0b010,
@@ -112,7 +112,7 @@ public:
      * |01| 1    | Self-Test 1    |
      * |10| 2    | Self-Test 2    |
      */
-    enum SelfTestMode : std::uint16_t {
+    enum class SelfTestMode : std::uint16_t {
         ST_SELF_TEST_1 = (0b01 << STPos),
         ST_SELF_TEST_2 = (0b10 << STPos),
     };
@@ -126,7 +126,7 @@ public:
      * |0   | No - discharge is not permitted        |
      * |1   | Yes - discharge is permitted           |
      */
-    enum DischargeCtrl : std::uint16_t {
+    enum class DischargeCtrl : std::uint16_t {
         DCP_DISABLED = (0b0 << DCPPos),
         DCP_ENABLED  = (0b1 << DCPPos),
     };
@@ -140,16 +140,17 @@ public:
      * |0   | Pull-Down Current         |
      * |1   | Pull-Up Current           |
      */
-    enum PUPCtrl : std::uint16_t {
+    enum class PUPCtrl : std::uint16_t {
         PUP_PULL_DOWN = (0b0 << PUPPos),
         PUP_PULL_UP   = (0b1 << PUPPos),
     };
 
     //Methods
-    explicit LTC68041(byte pMOSI = MOSI, byte pMISO = MISO, byte pCLK = SCK, byte pCS = 10);
-    void initialize();
+    explicit LTC68041(byte pCS = 10);
+    void initSPI(byte pinMOSI, byte pinMISO, byte pinCLK);
+    void destroySPI();
     void wakeup_idle();
-    std::uint8_t cfgRead();
+    bool cfgRead();
     void cfgWrite();
     void cfgSetVUV(const float Undervoltage);
     void cfgSetVOV(const float Overvoltage);
@@ -157,33 +158,23 @@ public:
     void cfgSetADCMode(ADCFilterMode mode);
     void cfgDebugOutput();
     float cellComputeSOC(float voc);
-    std::uint8_t rdcv();
-    void rdcv_reg(std::uint8_t reg, std::uint8_t *data);
-    int8_t rdaux(std::uint8_t reg, std::uint16_t aux_codes[6]);
-    void rdaux_reg(std::uint8_t reg, std::uint8_t *data);
+    bool readCells(const unsigned int groupCount = 4);
     bool checkSPI(const bool dbgOut);
-    bool rdstatus_debug();
-    float rditemp_debug();
-    void cnvCellVolt();
+    void readStatusDbg();
     void cnvStatus();
-    void cnvAuxVolt();
-    void cnvConfigRead();
-    void cnvConfigWrite();
-    float cnvITMP(float offset);
-    std::uint8_t rdcv_debug(std::uint16_t cell_codes[CELLNUM]);
+    float parseTemp(float offset);
+    void readCellsDbg();
 
-    std::uint8_t rdauxa();
-    std::uint8_t rdauxb();
-    std::uint8_t rdstata();
-    std::uint8_t rdstatb();
+    bool readAUX(const unsigned int group);
+    bool readStatus(const unsigned group);
     void cmdCLRAUX();
     void cmdCLRCELL();
-    void cmdADAX(AuxChannel chg = CHG_ALL);
-    void cmdADCV(DischargeCtrl dcp, CellChannel ch = CH_ALL);
+    void cmdADAX(AuxChannel chg = AuxChannel::CHG_ALL);
+    void cmdADCV(DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL);
     void cmdCVST(SelfTestMode st);
     void cmdADCVAX(DischargeCtrl dcp);
-    void cmdADSTAT(StatusGroup chst = CHST_ALL);
-    void cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CH_ALL);
+    void cmdADSTAT(StatusGroup chst = StatusGroup::CHST_ALL);
+    void cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL);
 
 protected:
 
@@ -332,44 +323,32 @@ private:
         std::array<std::uint8_t, SIZEREG> COMM;	    // COMM Register Group
     };
 
-    std::uint8_t REV;				//Revision Code Device Revision Code. See Revision Code and Reserved Bits in Operation Section.
-    std::uint8_t RSVD;				//Reserved Bits See Revision Code and Reserved Bits in Operation Section.
-    std::uint16_t cellCodes[CELLNUM];  //Raw values extracted from the voltage registers
-    std::uint16_t AuxCodes[GPIONUM];	//Auxilury Raw Data
-    std::uint16_t SOC;			//Sum of all cells Raw
-    std::uint16_t ITMP;			//InternalTemperautr Raw
-    std::uint16_t VA;			//Analog Power Supply Voltage 16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
-    std::uint16_t VD;			//Digital Power Supply Voltage 16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
+    std::uint16_t VA;		//Analog Power Supply Voltage 16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
+    std::uint16_t VD;		//Digital Power Supply Voltage 16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
     bool CUV[CELLNUM];		//Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
     bool COV[CELLNUM];		//Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
-    std::uint16_t Discharge;	//Array of bits, if 1=Discharge Active	if 0=Off
     bool MUXFAIL;			//Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
     bool THSD;				//Thermal Shutdown Status Read: 0 -> Thermal Shutdown Has Not Occurred 1 -> Thermal Shutdown Has Occurred THSD Bit Cleared to 0 on Read of Status RegIster Group B
 
-    float cellVoltage[CELLNUM];	//Cell voltage on volt
-    float gpioVoltage[GPIONUM];	//Voltage on the GPIO pins
-    float SumCellVoltages;	//Sum of all cell voltages
-    float AnalogSupplyVoltage;	//16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
-    float DigitalSupplyVoltage; //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
-    float InternalTemp;		//16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (�C) = ITMP � 100�V/7.5mV/�C � 273�C
-    float OffsetTemp;		//Offset of temperaturemeasurement
+    std::array<float, CELLNUM> cellVoltage;	//Cell voltage on volt
+    std::array<float, GPIONUM> gpioVoltage;	//Voltage on the GPIO pins
+    float SumCellVoltages;	        //Sum of all cell voltages
+    float AnalogSupplyVoltage;	    //16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
+    float DigitalSupplyVoltage;     //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
+    float OffsetTemp;		        //Offset of temperaturemeasurement
 
+    ADCMode md;
     byte pinCS;		//ChipSelectPin
-    byte pinMOSI;	//Master Out Slave In Pin
-    byte pinMISO;	//Master In Slave Out Pin
-    byte pinCLK;	//Clock Pin
+    Registers regs;
 
     static constexpr byte CELLNUM = 12; //Number of cells checked by this Chip
-    static constexpr byte GPIONUM = 5;  //Number of GPIOs
+    static constexpr byte GPIONUM = 6;  //Number of GPIOs
     static constexpr byte SIZEREG = 6; 	//All registers have the same length
-    static constexpr byte PECLEN = 2;   //Len PEC Bytes = 2
 
     static constexpr int MDPos = 7;
     static constexpr int DCPPos = 4;
     static constexpr int STPos = 5;
     static constexpr int PUPPos = 6;
-
-    Registers regs;
 
     static constexpr std::uint16_t crc15Table[256] = {
         0x0000, 0xc599, 0xceab, 0x0b32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //!<precomputed CRC15 Table
@@ -398,15 +377,18 @@ private:
         0x4e3e, 0x450c, 0x8095
     };
 
+    template<std::size_t N>
+    void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<std::uint8_t, N> &data);
+
     std::uint16_t calcPEC15(const std::uint16_t data);
 
     template<std::size_t N>
     std::uint16_t calcPEC15(const std::array<std::uint8_t, N> &data);
 
     template<std::size_t N>
-    void spi_read_cmd(const Commands cmd, std::array<std::uint8_t, N> &rx_data);
+    bool spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data);
 
-    void spi_write_cmd(const Commands cmd);
+    void spi_write_cmd(const std::uint16_t cmd);
 
 };
 
