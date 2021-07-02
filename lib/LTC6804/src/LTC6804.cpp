@@ -35,22 +35,13 @@ LTC68041::LTC68041(byte pMOSI, byte pMISO, byte pCLK, byte pCS)
 void LTC68041::initialize()
 {
     SPI.begin();
-    initCFGR();
-}
 
-/**
- * @brief Simple Serial print to check if object exists. Just for Debug
- */
-void LTC68041::helloworld()
-{
-    Serial.print("Hello World, used Pins are MOSI:");
-    Serial.print(pinMOSI);
-    Serial.print("\t MISO:");
-    Serial.print(pinMISO);
-    Serial.print("\t Clock:");
-    Serial.print(pinCLK);
-    Serial.print("\t Chipselect:");
-    Serial.println(pinCS);
+    regs.CFGR[CFGR0] = 0xFE;
+    regs.CFGR[CFGR1] = 0 ;
+    regs.CFGR[CFGR2] = 0 ;
+    regs.CFGR[CFGR3] = 0 ;
+    regs.CFGR[CFGR4] = 0 ;
+    regs.CFGR[CFGR5] = 0 ;
 }
 
 /**
@@ -60,12 +51,27 @@ void LTC68041::helloworld()
 void LTC68041::wakeup_idle()
 {
     digitalWrite(pinCS, LOW);
-    delay(2); //Guarantees the isoSPI will be in ready mode
-    //SPI.transfer(dummy);  //Test
+    delayMicroseconds(2); //Guarantees the isoSPI will be in ready mode
     digitalWrite(pinCS, HIGH);
-    delay(2); //Guarantees the isoSPI will be in ready mode
 }
 
+/*!******************************************************************************************************
+Calculates the CRC sum of some data bytes given by the array "data"
+*********************************************************************************************************/
+std::uint16_t LTC68041::calcPEC15(const std::uint16_t data)
+{
+    std::uint16_t remainder,addr;
+    const std::uint8_t *p_data = reinterpret_cast<const std::uint8_t *>(&data);
+
+    remainder = 16;//initialize the PEC
+    for(int i = 0; i < sizeof(std::uint16_t); i++)
+    {
+        addr = ((remainder >> 7) ^ p_data[i]) & 0xff;//calculate PEC table address
+        remainder = (remainder << 8) ^ crc15Table[addr];
+    }
+
+    return(remainder * 2);//The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
+}
 
 /*!******************************************************************************************************
 Calculates the CRC sum of some data bytes given by the array "data"
@@ -92,16 +98,16 @@ Tested and runs fine
 [in] std::array<std::uint8_t, N1> &tx_Data array of data to be written on the SPI port
 [out] std::array<std::uint8_t, N2> &rx_data array that read data will be written too.
 *********************************************************************************************************/
-template<std::size_t N1, std::size_t N2>
-void LTC68041::spi_write_read(const std::array<std::uint8_t, N1> &tx_Data, std::array<std::uint8_t, N2> &rx_data)
+template<std::size_t N>
+void LTC68041::spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data)
 {
+    std::uint16_t pec = calcPEC15(cmd);
+
     SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
 
-    for (const auto &element : tx_data)
-    {
-        SPI.transfer(element);
-    }
+    SPI.transfer16(cmd);
+    SPI.transfer16(pec);
 
     for (auto &element : rx_data)
     {
@@ -118,41 +124,25 @@ void LTC68041::spi_write_read(const std::array<std::uint8_t, N1> &tx_Data, std::
 Writes and read a set number of bytes using the SPI port without expecting an answer
 std::array<std::uint8_t, N> &data //Array of bytes to be written on the SPI port
 *********************************************************************************************************/
-template<std::size_t N>
-void LTC68041::spi_write_array(const std::array<std::uint8_t, N> &data)
+void LTC68041::spi_write_cmd(const std::uint16_t cmd)
 {
+    std::uint16_t pec = calcPEC15(cmd);
+
     SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
 
-    for (const auto &element : data)
-    {
-        SPI.transfer(element);
-    }
+    SPI.transfer16(cmd);
+    SPI.transfer16(pec);
 
     digitalWrite(pinCS, HIGH);
     SPI.endTransaction();
 }
 
-
 /*!******************************************************************************************************
 calculates the bitpattern in the config for Undervoltage detection  
 the config has to be written to the chip after this!
 *********************************************************************************************************/
-void LTC68041::initCFGR()
-{ 
-    regs.CFGR[CFGR0] = 0xFE;
-    regs.CFGR[CFGR1] = 0 ;
-    regs.CFGR[CFGR2] = 0 ;
-    regs.CFGR[CFGR3] = 0 ;
-    regs.CFGR[CFGR4] = 0 ;
-    regs.CFGR[CFGR5] = 0 ;
-}
-
-/*!******************************************************************************************************
-calculates the bitpattern in the config for Undervoltage detection  
-the config has to be written to the chip after this!
-*********************************************************************************************************/
-void LTC68041::setVUV(const float Undervoltage)
+void LTC68041::cfgSetVUV(const float Undervoltage)
 {
     uint16_t VUV = (Undervoltage / (0.0001 * 16)) - 1;		//calc bitpattern for UV
 
@@ -165,7 +155,7 @@ void LTC68041::setVUV(const float Undervoltage)
 calculates the bitpattern in the config for Overvoltage detection  
 the config has to be written to the chip after this!
 *********************************************************************************************************/
-void LTC68041::setVOV(const float Overvoltage)
+void LTC68041::cfgSetVOV(const float Overvoltage)
 {
     //float Undervoltage=3.123;
     //float Overvoltage=3.923;
@@ -181,9 +171,9 @@ Reads configuration registers of a LTC6804
 Giving additional Debug infos via Serial
 *********************************************************************************************************/
 
-void LTC68041::rdcfg_dbg()
+void LTC68041::cfgDebugOutput()
 {
-    rdcfg();         //Read the configuration data of all ICs on the daisy chain into
+    cfgRead();         //Read the configuration data of all ICs on the daisy chain into
 
     Serial.print("gelesene Config: ");
     for (const auto &element : regs.CFGR)
@@ -202,7 +192,7 @@ Sets  the configuration array for cell balancing
   Discharge this cell (1-12), disable all other, IF -1 then all off
   TODO: refactor
 *********************************************************************************************************/
-void LTC68041::balance_cfg(int cell, uint8_t cfg[6])
+void LTC68041::cfgSetDCC(std::bitset<12> dcc)
 {
     cfg[4] = 0x00; // clears S1-8
     cfg[5] = 0x00; // clears S9-12 and keep value of software timer cfg[5]  & 0xF0
@@ -233,7 +223,7 @@ Write the LTC6804 configuration register
 
  uint8_t config[6] is an array of the configuration data that will be written.
 *********************************************************************************************************/
-void LTC68041::wrcfg(uint8_t config[6])//A two dimensional array of the configuration data that will be written
+void LTC68041::cfgWrite()//A two dimensional array of the configuration data that will be written
 {
     const uint8_t BYTES_IN_REG = 6;
     const uint8_t CMD_LEN = 4+(8);
@@ -287,7 +277,7 @@ return Function returns SOC from 0-1.
 Funktion ist kaputt , muss ich mal fixen
 TODO: refactor
 *********************************************************************************************************/
-float LTC68041::cell_compute_soc(float voc) {
+float LTC68041::cellComputeSOC(float voc) {
     
     /*const double t_offset = 3.00205;
     const double t_step = 0.01;
@@ -335,24 +325,12 @@ float LTC68041::cell_compute_soc(float voc) {
   2. Calculate clraux cmd PEC and load pec into cmd array
   3. send broadcast clraux command
 *********************************************************************************************************/
-void LTC68041::clraux()
+void LTC68041::cmdCLRAUX()
 {
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    //1
-    cmd[0] = 0x07;
-    cmd[1] = 0x12;
-
-    //2
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec);
-
     //3
     wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
     //4
-    spi_write_read(cmd,4,0,0);
+    spi_write_cmd(static_cast<std::uint16_t>(CLRAUX));
 }
 
 
@@ -435,7 +413,7 @@ uint8_t LTC68041::rdcv() // Array of the parsed cell codes
  6. Copy data to object
  7. Return Result -1= Error , 0= DataOkay
 *********************************************************************************************************/
-uint8_t LTC68041::rdcfg()                
+uint8_t LTC68041::cfgRead()                
 {
 
     const uint8_t NUM_RX_BYT = 8; // number of bytes in the register + 2 bytes for the PEC
@@ -737,25 +715,13 @@ uint8_t LTC68041::rdstatb()
   2. Calculate clrcell cmd PEC and load pec into cmd array
   3. send broadcast clrcell command to LTC6804
 *********************************************************************************************************/
-void LTC68041::clrcell()
+void LTC68041::cmdCLRCELL()
 {
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    //1
-    cmd[0] = 0x07;
-    cmd[1] = 0x11;
-
-    //2
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec );
-
     //3
     //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
     //4
-    spi_write_read(cmd,4,0,0);
+    spi_write_cmd(static_cast<std::uint16_t>(CLRCELL));
 }
 
 
@@ -1029,90 +995,7 @@ int8_t LTC68041::rdaux(uint8_t reg, uint16_t aux_codes[6])
     Serial.println("  ");
     free(data);
     return (pec_error);
-    }
-
-
-    /*!*******************************************************************************************************
-    Starts cell voltage ADC conversions of the LTC6804 Cpin inputs.
-    The type of ADC conversion executed can be changed by setting the associated global variables:
-
-    MD   Determines the filter corner of the ADC
-    CH   Determines which cell channels are converted
-    DCP  Determines if Discharge is Permitted
-    *********************************************************************************************************/
-    void LTC68041::adcv()
-    {
-
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    //1
-    cmd[0] = 0x03;
-    cmd[1] = 0x70;  //70=mit discharge , 60=Ohne
-
-    //2
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec);
-    //3
-    //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-    //4
-    spi_write_array(4,cmd);
-
 }
-
-
-/*!******************************************************************************************************
-Starts cell voltage conversion with test values from selftest 1
-*********************************************************************************************************/
-void LTC68041::adcv_test1()
-{
-
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    //1
-    cmd[0] = 0x3;
-    cmd[1] = 0x27;
-
-    //2
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec);
-
-    //3
-    //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-
-    //4
-    spi_write_array(4,cmd);
-}
-
-
-/*!******************************************************************************************************
-Starts cell voltage conversion with test values from selftest 2
-*********************************************************************************************************/
-void LTC68041::adcv_test2()
-{
-
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    //1
-    cmd[0] = 0x3;
-    cmd[1] = 0x47;
-
-    //2
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec);
-
-    //3
-    //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-
-    //4
-    spi_write_array(4,cmd);
-}
-
 
 /*!******************************************************************************************************
 Kind of debug function, a lot information are printed via Serial
@@ -1198,11 +1081,11 @@ bool LTC68041::rdstatus_debug()
 
     if(response_pec==response_pec_calc&(response_pec_calc!=0))
     {
-        return 1;
+        return true;
     }
     else
     {
-        return 0;
+        return false;
     }
 }
 
@@ -1385,26 +1268,40 @@ void LTC68041::cnvConfigWrite()
 }
 
 /*!*******************************************************************************************************
-Reset all Discharge bits in the WriteConfig
+  Starts cell voltage ADC conversions of the LTC6804 Cpin inputs.
+  The type of ADC conversion executed can be changed by setting the associated global variables:  
+  MD   Determines the filter corner of the ADC
+  CH   Determines which cell channels are converted
+  DCP  Determines if Discharge is Permitted
 *********************************************************************************************************/
-bool LTC68041::setDischarge(int Discharge) 
+void LTC68041::cmdADCV(DischargeCtrl dcp, CellChannel ch)
 {
-    if(Discharge>0 & Discharge<12)
-    {
-        //bitWrite(, Discharge);
-        return 1; //success
-    }
-    else
-    {
-        return 0;//wrong value
-    }
-   
+
+    std::uint16_t cmd = static_cast<std::uint16_t>(ADCV);
+    cmd |= static_cast<std::uint16_t>(dcp);
+    cmd |= static_cast<std::uint16_t>(ch);
+
+    //3
+    //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+    //4
+    spi_write_cmd(cmd);
+
 }
 
-
-void LTC68041::resetDischargeAll()
+/*!******************************************************************************************************
+Starts cell voltage conversion with test values from selftest 2
+*********************************************************************************************************/
+void LTC68041::cmdCVST(SelfTestMode st)
 {
-    Discharge=0;
+
+    std::uint16_t cmd = static_cast<std::uint16_t>(CVST);
+    cmd |= static_cast<std::uint16_t>(st);
+
+    //3
+    //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+
+    //4
+    spi_write_cmd(cmd);
 }
 
 /*!*******************************************************************************************************
@@ -1414,19 +1311,13 @@ void LTC68041::resetDischargeAll()
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::adax()
+void LTC68041::cmdADAX(AuxChannel chg)
 {
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    cmd[0] = 0x05;
-    cmd[1] = 0x60;
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec);
+    std::uint16_t cmd = static_cast<std::uint16_t>(ADAX);
+    cmd |= static_cast<std::uint16_t>(chg);
 
     //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-    spi_write_array(4,cmd);
+    spi_write_cmd(cmd);
 }
 
 
@@ -1437,19 +1328,13 @@ void LTC68041::adax()
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::adcvax()
+void LTC68041::cmdADCVAX(DischargeCtrl dcp)
 {
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    cmd[0] = 0x05;
-    cmd[1] = 0x6F;
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec);
+    std::uint16_t cmd = static_cast<std::uint16_t>(ADCVAX);
+    cmd |= static_cast<std::uint16_t>(dcp);
 
     //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-    spi_write_array(4,cmd);
+    spi_write_cmd(cmd);
 }
 
 
@@ -1460,19 +1345,13 @@ void LTC68041::adcvax()
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::adstat()
+void LTC68041::cmdADSTAT(StatusGroup chst)
 {
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    cmd[0] = 0x05;
-    cmd[1] = 0x68;
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec);
+    std::uint16_t cmd = static_cast<std::uint16_t>(ADSTAT);
+    cmd |= static_cast<std::uint16_t>(chst);
 
     wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-    spi_write_array(4,cmd);
+    spi_write_cmd(cmd);
 }
 
 /*!*******************************************************************************************************
@@ -1482,42 +1361,15 @@ void LTC68041::adstat()
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::adowpu()
+void LTC68041::cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch)
 {
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    cmd[0] = 0x03;
-    cmd[1] = 0x68;
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec);
+    std::uint16_t cmd = static_cast<std::uint16_t>(ADOW);
+    cmd |= static_cast<std::uint16_t>(pup);
+    cmd |= static_cast<std::uint16_t>(dcp);
+    cmd |= static_cast<std::uint16_t>(ch);
 
     //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-    spi_write_array(4,cmd);
-}
-
-
-/*!*******************************************************************************************************
-  Starts an ADC conversions of the open wire check with pulldown
-  The type of ADC conversion executed can be changed by the command value
-  1. Load command into cmd array
-  2. Calculate adax cmd PEC and load pec into cmd array
-  3. send broadcast adax command to LTC6804
-*********************************************************************************************************/
-void LTC68041::adowpd()
-{
-    uint8_t cmd[4];
-    uint16_t cmd_pec;
-
-    cmd[0] = 0x03;
-    cmd[1] = 0x28;
-    cmd_pec = pec15_calc(2, cmd);
-    cmd[2] = (uint8_t)(cmd_pec >> 8);
-    cmd[3] = (uint8_t)(cmd_pec);
-
-    //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
-    spi_write_array(4,cmd);
+    spi_write_cmd(cmd);
 }
 
 /*!*******************************************************************************************************
@@ -1628,7 +1480,7 @@ void LTC68041::rdcv_reg(uint8_t reg, uint8_t *data)
     cmd[3] = (uint8_t)(cmd_pec);
 
     //3
-    spi_write_read(cmd,4,data,REG_LEN);
+    spi_read_cmd(cmd,4,data,REG_LEN);
 }
 
 inline void serialPrint(uint8_t data)

@@ -11,6 +11,7 @@ https://github.com/jontubs/EasyBMS
 #define LTC68041_H
 
 #include <array>
+#include <bitset>
 
 class LTC68041
 {
@@ -146,48 +147,43 @@ public:
 
     //Methods
     explicit LTC68041(byte pMOSI = MOSI, byte pMISO = MISO, byte pCLK = SCK, byte pCS = 10);
-    void helloworld();
     void initialize();
     void wakeup_idle();
-    void initCFGR();
-    std::uint8_t rdcfg();
-    void setVUV(const float Undervoltage);
-    void setVOV(const float Overvoltage);
-    void resetDischargeAll();
-    bool setDischarge(int Discharge) ;
-    int8_t rdcfg_debug();
-    void balance_cfg(int cell, std::uint8_t cfg[6]);
-    void wrcfg(std::uint8_t config[6]);
-    float cell_compute_soc(float voc);
-    void clraux();
+    std::uint8_t cfgRead();
+    void cfgWrite();
+    void cfgSetVUV(const float Undervoltage);
+    void cfgSetVOV(const float Overvoltage);
+    void cfgSetDCC(std::bitset<12> dcc);
+    void cfgSetADCMode(ADCFilterMode mode);
+    void cfgDebugOutput();
+    float cellComputeSOC(float voc);
     std::uint8_t rdcv();
     void rdcv_reg(std::uint8_t reg, std::uint8_t *data);
-    void clrcell();
+    int8_t rdaux(std::uint8_t reg, std::uint16_t aux_codes[6]);
     void rdaux_reg(std::uint8_t reg, std::uint8_t *data);
     bool checkSPI(const bool dbgOut);
-    int8_t rdaux(std::uint8_t reg, std::uint16_t aux_codes[6]);
-    void adcv();
-    void adcv_test1();
-    void adcv_test2();
     bool rdstatus_debug();
-    float  rditemp_debug();
+    float rditemp_debug();
     void cnvCellVolt();
     void cnvStatus();
     void cnvAuxVolt();
     void cnvConfigRead();
     void cnvConfigWrite();
-    void adax();
     float cnvITMP(float offset);
-    std::uint8_t rdcv_debug(std::uint16_t cell_codes[cellNum]);
+    std::uint8_t rdcv_debug(std::uint16_t cell_codes[CELLNUM]);
+
     std::uint8_t rdauxa();
     std::uint8_t rdauxb();
     std::uint8_t rdstata();
     std::uint8_t rdstatb();
-    void adcvax();
-    void adstat();
-    void adowpu();
-    void adowpd();
-
+    void cmdCLRAUX();
+    void cmdCLRCELL();
+    void cmdADAX(AuxChannel chg = CHG_ALL);
+    void cmdADCV(DischargeCtrl dcp, CellChannel ch = CH_ALL);
+    void cmdCVST(SelfTestMode st);
+    void cmdADCVAX(DischargeCtrl dcp);
+    void cmdADSTAT(StatusGroup chst = CHST_ALL);
+    void cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CH_ALL);
 
 protected:
 
@@ -197,7 +193,7 @@ private:
      * @brief Register names in the different register groups with corresponding
      *        index in group array
      */
-    enum RegisterNames {
+    enum RegNames {
         CFGR0 = 0,
         CFGR1 = 1,
         CFGR2 = 2,
@@ -267,7 +263,7 @@ private:
         COMM3 = 3,
         COMM4 = 4,
         COMM5 = 5,
-    }
+    };
 
     /**
      * @brief Command codes, for commands that have option bits (see p. 50 in manual),
@@ -301,7 +297,7 @@ private:
         WRCOMM  = 0x0721,
         RDCOMM  = 0x0722,
         STCOMM  = 0x0723
-    }
+    };
 
     /**
      * @brief ADC Conversion Mode
@@ -323,7 +319,7 @@ private:
     /**
      * @brief Register map of internal register groups
      */
-    struct Register {
+    struct Registers {
         std::array<std::uint8_t, SIZEREG> CFGR;     // Configuration Register Group
         std::array<std::uint8_t, SIZEREG> CVAR;	    // Cell Voltage Register Group A
         std::array<std::uint8_t, SIZEREG> CVBR;	    // Cell Voltage Register Group B
@@ -336,7 +332,6 @@ private:
         std::array<std::uint8_t, SIZEREG> COMM;	    // COMM Register Group
     };
 
-    std::uint8_t dummy = 0x55;		//Just a dummy byte
     std::uint8_t REV;				//Revision Code Device Revision Code. See Revision Code and Reserved Bits in Operation Section.
     std::uint8_t RSVD;				//Reserved Bits See Revision Code and Reserved Bits in Operation Section.
     std::uint16_t cellCodes[CELLNUM];  //Raw values extracted from the voltage registers
@@ -359,9 +354,6 @@ private:
     float InternalTemp;		//16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (�C) = ITMP � 100�V/7.5mV/�C � 273�C
     float OffsetTemp;		//Offset of temperaturemeasurement
 
-    //internal variables
-    byte index;
-
     byte pinCS;		//ChipSelectPin
     byte pinMOSI;	//Master Out Slave In Pin
     byte pinMISO;	//Master In Slave Out Pin
@@ -377,7 +369,7 @@ private:
     static constexpr int STPos = 5;
     static constexpr int PUPPos = 6;
 
-    Register regs;
+    Registers regs;
 
     static constexpr std::uint16_t crc15Table[256] = {
         0x0000, 0xc599, 0xceab, 0x0b32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //!<precomputed CRC15 Table
@@ -406,14 +398,15 @@ private:
         0x4e3e, 0x450c, 0x8095
     };
 
+    std::uint16_t calcPEC15(const std::uint16_t data);
+
     template<std::size_t N>
     std::uint16_t calcPEC15(const std::array<std::uint8_t, N> &data);
 
-    template<std::size_t N1, std::size_t N2>
-    void spi_write_read(const std::array<std::uint8_t, N1> &tx_Data, std::array<std::uint8_t, N2> &rx_data);
-
     template<std::size_t N>
-    void spi_write_array(const std::array<std::uint8_t, N> &data);
+    void spi_read_cmd(const Commands cmd, std::array<std::uint8_t, N> &rx_data);
+
+    void spi_write_cmd(const Commands cmd);
 
 };
 

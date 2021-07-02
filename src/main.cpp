@@ -28,7 +28,7 @@ void setup()
 // the loop function runs over and over again forever
 void loop()
 {
-    if (LTC.checkSPI_mute())
+    if (LTC.checkSPI(true))
     {
         digitalWrite(D1, HIGH);
         Serial.println("\nSPI ok");
@@ -38,12 +38,9 @@ void loop()
         digitalWrite(D1, LOW);
         Serial.println("\nSPI lost");
     }
-    //Set the CFGWrite bytes
-    LTC.CFGRw[0]=0xFE;   //0x07;     //0xFE;
 
-    LTC.CFGRw[5]=0;
-    LTC.setVUV(3.1);
-    LTC.setVOV(3.9);
+    LTC.cfgSetVUV(3.1);
+    LTC.cfgSetVOV(3.9);
 
     //Local Variables
     if((timer+diff)<millis())
@@ -71,12 +68,12 @@ void loop()
         //LTC.DischargeW[8]=0;
     }
 
-    LTC.wrcfg(LTC.CFGRw);
+    LTC.cfgWrite(LTC.CFGRw);
     //Start different Analog-Digital-Conversions in the Chip
     
-    LTC.adcv();
-    LTC.adax();
-    LTC.adstat();
+    LTC.cmdADCV(LTC68041::DCP_DISABLED);
+    LTC.cmdADAX();
+    LTC.cmdADSTAT();
     delay(20);   //Wait until everything is finished
 
     //Read the raw values into the controller
@@ -85,7 +82,7 @@ void loop()
     LTC.rdauxb();
     LTC.rdstata();
     LTC.rdstatb();
-    LTC.rdcfg();
+    LTC.cfgRead();
 
     //Convert the raw values into clear text values
     LTC.cnvCellVolt();
@@ -96,7 +93,7 @@ void loop()
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
 
     Serial.print("\nConfig zurückgelesen: ");
-    printArrayByte(6, LTC.CFGRr);
+    printArray(6, LTC.CFGRr);
     Serial.print("\r\n");
 
     Serial.print("\nCell Voltages: ");
