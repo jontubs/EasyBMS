@@ -3,9 +3,7 @@
 #include <SPI.h>
 
 int error = 0;
-
-//byte pinMOSI, byte pinMISO, byte pinCLK, byte pinCS
-static LTC68041 LTC = LTC68041(D7, D6, D5, D8);
+static LTC68041 LTC = LTC68041(D8);
 
 static unsigned long timer;
 static unsigned long diff=1000;
@@ -22,7 +20,7 @@ void setup()
 
     Serial.begin(74880);
     Serial.println("Init");
-    LTC.initialize(); //Initialize LTC6804 hardware
+    LTC.initSPI(D7, D6, D5); //Initialize LTC6804 hardware
 }
 
 // the loop function runs over and over again forever
@@ -71,37 +69,28 @@ void loop()
     LTC.cfgWrite(LTC.CFGRw);
     //Start different Analog-Digital-Conversions in the Chip
     
-    LTC.cmdADCV(LTC68041::DCP_DISABLED);
+    LTC.cmdADCV(LTC68041::DischargeCtrl::DCP_DISABLED);
     LTC.cmdADAX();
     LTC.cmdADSTAT();
     delay(20);   //Wait until everything is finished
 
     //Read the raw values into the controller
-    LTC.rdcv();
-    LTC.rdauxa();
-    LTC.rdauxb();
-    LTC.rdstata();
-    LTC.rdstatb();
+    LTC.readCells();
+    LTC.readAUX(0xA);
+    LTC.readAUX(0xB);
+    LTC.readStatus(0xA);
+    LTC.readStatus(0xB);
     LTC.cfgRead();
 
-    //Convert the raw values into clear text values
-    LTC.cnvCellVolt();
-    LTC.cnvAuxVolt();
-    LTC.cnvStatus();
     //LTC.cnvDischarge(LTC.DischargeW);
     //LTC.rditemp();
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
 
     Serial.print("\nConfig zurückgelesen: ");
-    printArray(6, LTC.CFGRr);
-    Serial.print("\r\n");
+    LTC.readStatusDbg();
+    Serial.println("");
 
-    Serial.print("\nCell Voltages: ");
-    for(int i=0;i<LTC.cellNum;i++)
-    {
-        Serial.print(LTC.cellVoltage[i]);
-        Serial.print("\t");
-    }
+    LTC.readCellsDbg();
 
     Serial.print("\nModule Voltage: ");
     Serial.print(LTC.SumCellVoltages);

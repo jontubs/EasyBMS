@@ -162,7 +162,7 @@ public:
     bool checkSPI(const bool dbgOut);
     void readStatusDbg();
     void cnvStatus();
-    float parseTemp(float offset);
+    float getInternalTemp(float offset);
     void readCellsDbg();
 
     bool readAUX(const unsigned int group);
@@ -179,6 +179,15 @@ public:
 protected:
 
 private:
+
+    static constexpr byte CELLNUM = 12; //Number of cells checked by this Chip
+    static constexpr byte AUXNUM = 6;   //Number of Auxiliary Voltages
+    static constexpr byte SIZEREG = 6; 	//All registers have the same length
+
+    static constexpr int MDPos = 7;
+    static constexpr int DCPPos = 4;
+    static constexpr int STPos = 5;
+    static constexpr int PUPPos = 6;
 
     /**
      * @brief Register names in the different register groups with corresponding
@@ -323,32 +332,21 @@ private:
         std::array<std::uint8_t, SIZEREG> COMM;	    // COMM Register Group
     };
 
-    std::uint16_t VA;		//Analog Power Supply Voltage 16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
-    std::uint16_t VD;		//Digital Power Supply Voltage 16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
     bool CUV[CELLNUM];		//Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
     bool COV[CELLNUM];		//Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
     bool MUXFAIL;			//Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
     bool THSD;				//Thermal Shutdown Status Read: 0 -> Thermal Shutdown Has Not Occurred 1 -> Thermal Shutdown Has Occurred THSD Bit Cleared to 0 on Read of Status RegIster Group B
 
     std::array<float, CELLNUM> cellVoltage;	//Cell voltage on volt
-    std::array<float, GPIONUM> gpioVoltage;	//Voltage on the GPIO pins
-    float SumCellVoltages;	        //Sum of all cell voltages
-    float AnalogSupplyVoltage;	    //16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
-    float DigitalSupplyVoltage;     //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
-    float OffsetTemp;		        //Offset of temperaturemeasurement
+    std::array<float, AUXNUM> auxVoltage;	//Voltage of GPIOS and VREF2 in Volt
+    float SumCellVoltages;	                //Sum of all cell voltages
+    float AnalogSupplyVoltage;	            //16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
+    float DigitalSupplyVoltage;             //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
+    float OffsetTemp;		                //Offset of temperaturemeasurement
 
     ADCMode md;
     byte pinCS;		//ChipSelectPin
     Registers regs;
-
-    static constexpr byte CELLNUM = 12; //Number of cells checked by this Chip
-    static constexpr byte GPIONUM = 6;  //Number of GPIOs
-    static constexpr byte SIZEREG = 6; 	//All registers have the same length
-
-    static constexpr int MDPos = 7;
-    static constexpr int DCPPos = 4;
-    static constexpr int STPos = 5;
-    static constexpr int PUPPos = 6;
 
     static constexpr std::uint16_t crc15Table[256] = {
         0x0000, 0xc599, 0xceab, 0x0b32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //!<precomputed CRC15 Table
@@ -378,7 +376,7 @@ private:
     };
 
     template<std::size_t N>
-    void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<std::uint8_t, N> &data);
+    void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<float, N> &data);
 
     std::uint16_t calcPEC15(const std::uint16_t data);
 
