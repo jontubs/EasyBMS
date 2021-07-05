@@ -18,6 +18,52 @@ class LTC68041
 public:
 
     /**
+     * @brief Discharge timeouts in DCTO bits in CFGR5
+     * 
+     */
+    enum class DischargeTimeout : std::uint8_t {
+        DISCHRG_TIMEOUT_DISABLED    = 0x0 << DCTOPos,
+        DISCHRG_TIMEOUT_0MIN5       = 0x1 << DCTOPos,
+        DISCHRG_TIMEOUT_1MIN        = 0x2 << DCTOPos,
+        DISCHRG_TIMEOUT_2MIN        = 0x3 << DCTOPos,
+        DISCHRG_TIMEOUT_3MIN        = 0x4 << DCTOPos,
+        DISCHRG_TIMEOUT_4MIN        = 0x5 << DCTOPos,
+        DISCHRG_TIMEOUT_5MIN        = 0x6 << DCTOPos,
+        DISCHRG_TIMEOUT_10MIN       = 0x7 << DCTOPos,
+        DISCHRG_TIMEOUT_15MIN       = 0x8 << DCTOPos,
+        DISCHRG_TIMEOUT_20MIN       = 0x9 << DCTOPos,
+        DISCHRG_TIMEOUT_30MIN       = 0xA << DCTOPos,
+        DISCHRG_TIMEOUT_40MIN       = 0xB << DCTOPos,
+        DISCHRG_TIMEOUT_60MIN       = 0xC << DCTOPos,
+        DISCHRG_TIMEOUT_75MIN       = 0xD << DCTOPos,
+        DISCHRG_TIMEOUT_90MIN       = 0xE << DCTOPos,
+        DISCHRG_TIMEOUT_120MIN      = 0xF << DCTOPos,
+    };
+
+    /**
+     * @brief Discharge time left values on DCTO read in CFGR5
+     * 
+     */
+    enum class DischargeTimeLeft : std::uint8_t {
+        DISCHRG_TIME_LEFT_TIMEOUT_DISABLED  = 0x0 << DCTOPos,
+        DISCHRG_TIME_LEFT_0MIN_TO_0MIN5     = 0x1 << DCTOPos,
+        DISCHRG_TIME_LEFT_0MIN5_TO_1MIN     = 0x2 << DCTOPos,
+        DISCHRG_TIME_LEFT_1MIN_TO_2MIN      = 0x3 << DCTOPos,
+        DISCHRG_TIME_LEFT_2MIN_TO_3MIN      = 0x4 << DCTOPos,
+        DISCHRG_TIME_LEFT_3MIN_TO_4MIN      = 0x5 << DCTOPos,
+        DISCHRG_TIME_LEFT_4MIN_TO_5MIN      = 0x6 << DCTOPos,
+        DISCHRG_TIME_LEFT_5MIN_TO_10MIN     = 0x7 << DCTOPos,
+        DISCHRG_TIME_LEFT_10MIN_TO_15MIN    = 0x8 << DCTOPos,
+        DISCHRG_TIME_LEFT_15MIN_TO_20MIN    = 0x9 << DCTOPos,
+        DISCHRG_TIME_LEFT_20MIN_TO_30MIN    = 0xA << DCTOPos,
+        DISCHRG_TIME_LEFT_30MIN_TO_40MIN    = 0xB << DCTOPos,
+        DISCHRG_TIME_LEFT_40MIN_TO_60MIN    = 0xC << DCTOPos,
+        DISCHRG_TIME_LEFT_60MIN_TO_75MIN5   = 0xD << DCTOPos,
+        DISCHRG_TIME_LEFT_75MIN_TO_90MIN    = 0xE << DCTOPos,
+        DISCHRG_TIME_LEFT_90MIN_TO_120MIN   = 0xF << DCTOPos,
+    };
+
+    /**
      * @brief ADC Conversion Mode
      *
      * | 27kHz Mode (Fast)           |
@@ -149,32 +195,53 @@ public:
     explicit LTC68041(byte pCS = 10);
     void initSPI(byte pinMOSI, byte pinMISO, byte pinCLK);
     void destroySPI();
-    void wakeup_idle();
+    void wakeup_idle() const;
     bool cfgRead();
     void cfgWrite();
     void cfgSetVUV(const float Undervoltage);
+    float cfgGetVUV() const;
     void cfgSetVOV(const float Overvoltage);
+    float cfgGetVOV() const;
     void cfgSetDCC(std::bitset<12> dcc);
+    std::bitset<12> cfgGetDCC() const;
+    void cfgSetDischargeTimeout(DischargeTimeout timeout);
+    DischargeTimeLeft cfgGetDischargeTimeLeft() const;
+    void cfgSetRefOn(const bool value);
+    bool cfgGetSWTENPin() const;
     void cfgSetADCMode(ADCFilterMode mode);
-    void cfgDebugOutput();
-    float cellComputeSOC(float voc);
+    ADCFilterMode cfgGetADCMode() const;
+
     bool readCells(const unsigned int groupCount = 4);
+    bool readAuxiliary(const unsigned int group);
+    bool readStatus(const unsigned int group);
+
     bool checkSPI(const bool dbgOut);
+
+    void readCfgDbg();
     void readStatusDbg();
-    void cnvStatus();
-    float getInternalTemp(float offset);
     void readCellsDbg();
 
-    bool readAUX(const unsigned int group);
-    bool readStatus(const unsigned group);
-    void cmdCLRAUX();
-    void cmdCLRCELL();
-    void cmdADAX(AuxChannel chg = AuxChannel::CHG_ALL);
-    void cmdADCV(DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL);
-    void cmdCVST(SelfTestMode st);
-    void cmdADCVAX(DischargeCtrl dcp);
-    void cmdADSTAT(StatusGroup chst = StatusGroup::CHST_ALL);
-    void cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL);
+    template<std::size_t N>
+    void getCellVoltages(std::array<float, N> &voltages, const CellChannel = CellChannel::CH_ALL);
+    float getAuxVoltage(const AuxChannel chg);
+    float getStatusVoltage(const StatusGroup chst);
+    //Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
+    std::bitset<12> getOverVoltageFlags() const;
+    //Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
+    std::bitset<12> getUnderVoltageFlags() const;
+    bool getMUXFail() const;
+    bool getThermalShutdown() const;
+
+    float cellComputeSOC(float voc);
+
+    void cmdCLRAUX() const;
+    void cmdCLRCELL() const;
+    void cmdADAX(AuxChannel chg = AuxChannel::CHG_ALL) const;
+    void cmdADCV(DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL) const;
+    void cmdCVST(SelfTestMode st) const;
+    void cmdADCVAX(DischargeCtrl dcp) const;
+    void cmdADSTAT(StatusGroup chst = StatusGroup::CHST_ALL) const;
+    void cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL) const;
 
 protected:
 
@@ -184,10 +251,32 @@ private:
     static constexpr byte AUXNUM = 6;   //Number of Auxiliary Voltages
     static constexpr byte SIZEREG = 6; 	//All registers have the same length
 
+    static constexpr int DCTOPos = 4;
     static constexpr int MDPos = 7;
     static constexpr int DCPPos = 4;
     static constexpr int STPos = 5;
     static constexpr int PUPPos = 6;
+
+    /**
+     * @brief Position of config and status bits in corresponding registers
+     * 
+     */
+    enum CfgBits {
+        STBR5_MUXFAIL_Pos = 0,            //Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
+        STBR5_THSD_Pos = 1,               //Thermal Shutdown Status Read: 0 -> Thermal Shutdown Has Not Occurred 1 -> Thermal Shutdown Has Occurred THSD Bit Cleared to 0 on Read of Status RegIster Group B
+        CFGR0_ADCOPT_Pos = 0,
+        CFGR0_SWTRD_Pos = 1,
+        CFGR0_REFON_Pos = 2,
+        CFGR0_GPIO1_Pos = 3,
+        CFGR0_GPIO2_Pos = 4,
+        CFGR0_GPIO3_Pos = 5,
+        CFGR0_GPIO4_Pos = 6,
+        CFGR0_GPIO5_Pos = 7,
+    };
+
+    enum BitMasks {
+
+    };
 
     /**
      * @brief Register names in the different register groups with corresponding
@@ -331,12 +420,7 @@ private:
         std::array<std::uint8_t, SIZEREG> STBR;	    // Status Register Group B
         std::array<std::uint8_t, SIZEREG> COMM;	    // COMM Register Group
     };
-
-    bool CUV[CELLNUM];		//Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
-    bool COV[CELLNUM];		//Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
-    bool MUXFAIL;			//Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
-    bool THSD;				//Thermal Shutdown Status Read: 0 -> Thermal Shutdown Has Not Occurred 1 -> Thermal Shutdown Has Occurred THSD Bit Cleared to 0 on Read of Status RegIster Group B
-
+    
     std::array<float, CELLNUM> cellVoltage;	//Cell voltage on volt
     std::array<float, AUXNUM> auxVoltage;	//Voltage of GPIOS and VREF2 in Volt
     float SumCellVoltages;	                //Sum of all cell voltages
@@ -378,15 +462,15 @@ private:
     template<std::size_t N>
     void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<float, N> &data);
 
-    std::uint16_t calcPEC15(const std::uint16_t data);
+    std::uint16_t calcPEC15(const std::uint16_t data) const;
 
     template<std::size_t N>
-    std::uint16_t calcPEC15(const std::array<std::uint8_t, N> &data);
+    std::uint16_t calcPEC15(const std::array<std::uint8_t, N> &data) const;
 
     template<std::size_t N>
     bool spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data);
 
-    void spi_write_cmd(const std::uint16_t cmd);
+    void spi_write_cmd(const std::uint16_t cmd) const;
 
 };
 
