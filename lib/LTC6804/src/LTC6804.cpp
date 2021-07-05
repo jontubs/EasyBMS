@@ -58,7 +58,7 @@ void LTC68041::destroySPI()
  * @brief Wake isoSPI up from idle state
  *        Generic wakeup commannd to wake isoSPI up out of idle 
  */
-void LTC68041::wakeup_idle()
+void LTC68041::wakeup_idle() const
 {
     digitalWrite(pinCS, LOW);
     delayMicroseconds(2); //Guarantees the isoSPI will be in ready mode
@@ -68,7 +68,7 @@ void LTC68041::wakeup_idle()
 /*!******************************************************************************************************
 Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
-std::uint16_t LTC68041::calcPEC15(const std::uint16_t data)
+std::uint16_t LTC68041::calcPEC15(const std::uint16_t data) const
 {
     std::uint16_t remainder,addr;
     const std::uint8_t *p_data = reinterpret_cast<const std::uint8_t *>(&data);
@@ -87,7 +87,7 @@ std::uint16_t LTC68041::calcPEC15(const std::uint16_t data)
 Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
 template<std::size_t N>
-std::uint16_t LTC68041::calcPEC15(const std::array<std::uint8_t, N> &data)
+std::uint16_t LTC68041::calcPEC15(const std::array<std::uint8_t, N> &data) const
 {
     std::uint16_t remainder,addr;
 
@@ -135,7 +135,7 @@ bool LTC68041::spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N>
 Writes and read a set number of bytes using the SPI port without expecting an answer
 std::array<std::uint8_t, N> &data //Array of bytes to be written on the SPI port
 *********************************************************************************************************/
-void LTC68041::spi_write_cmd(const std::uint16_t cmd)
+void LTC68041::spi_write_cmd(const std::uint16_t cmd) const
 {
     std::uint16_t pec = calcPEC15(cmd);
 
@@ -182,7 +182,7 @@ Reads configuration registers of a LTC6804
 Giving additional Debug infos via Serial
 *********************************************************************************************************/
 
-void LTC68041::cfgDebugOutput()
+void LTC68041::readCfgDbg()
 {
     cfgRead();         //Read the configuration data of all ICs on the daisy chain into
 
@@ -376,7 +376,7 @@ float LTC68041::cellComputeSOC(float voc) {
   2. Calculate clraux cmd PEC and load pec into cmd array
   3. send broadcast clraux command
 *********************************************************************************************************/
-void LTC68041::cmdCLRAUX()
+void LTC68041::cmdCLRAUX() const
 {
     //3
     wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
@@ -478,7 +478,7 @@ bool LTC68041::cfgRead()
   2. Calculate clrcell cmd PEC and load pec into cmd array
   3. send broadcast clrcell command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdCLRCELL()
+void LTC68041::cmdCLRCELL() const
 {
     //3
     //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
@@ -553,7 +553,7 @@ bool LTC68041::checkSPI(const bool dbgOut)
 [return]  int8_t, PEC Status  0: No PEC error detected -1: PEC error detected, retry read
 
 *********************************************************************************************************/ 
-bool LTC68041::readAUX(const unsigned int group)
+bool LTC68041::readAuxiliary(const unsigned int group)
 {
     switch(group)
     {
@@ -720,7 +720,7 @@ void LTC68041::parseStatus()
   CH   Determines which cell channels are converted
   DCP  Determines if Discharge is Permitted
 *********************************************************************************************************/
-void LTC68041::cmdADCV(DischargeCtrl dcp, CellChannel ch)
+void LTC68041::cmdADCV(DischargeCtrl dcp, CellChannel ch) const
 {
 
     std::uint16_t cmd = static_cast<std::uint16_t>(ADCV);
@@ -738,7 +738,7 @@ void LTC68041::cmdADCV(DischargeCtrl dcp, CellChannel ch)
 /*!******************************************************************************************************
 Starts cell voltage conversion with test values from selftest 2
 *********************************************************************************************************/
-void LTC68041::cmdCVST(SelfTestMode st)
+void LTC68041::cmdCVST(SelfTestMode st) const
 {
 
     std::uint16_t cmd = static_cast<std::uint16_t>(CVST);
@@ -759,7 +759,7 @@ void LTC68041::cmdCVST(SelfTestMode st)
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdADAX(AuxChannel chg)
+void LTC68041::cmdADAX(AuxChannel chg) const
 {
     std::uint16_t cmd = static_cast<std::uint16_t>(ADAX);
     cmd |= static_cast<std::uint16_t>(md);
@@ -777,7 +777,7 @@ void LTC68041::cmdADAX(AuxChannel chg)
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdADCVAX(DischargeCtrl dcp)
+void LTC68041::cmdADCVAX(DischargeCtrl dcp) const
 {
     std::uint16_t cmd = static_cast<std::uint16_t>(ADCVAX);
     cmd |= static_cast<std::uint16_t>(md);
@@ -795,7 +795,7 @@ void LTC68041::cmdADCVAX(DischargeCtrl dcp)
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdADSTAT(StatusGroup chst)
+void LTC68041::cmdADSTAT(StatusGroup chst) const
 {
     std::uint16_t cmd = static_cast<std::uint16_t>(ADSTAT);
     cmd |= static_cast<std::uint16_t>(md);
@@ -812,7 +812,7 @@ void LTC68041::cmdADSTAT(StatusGroup chst)
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch)
+void LTC68041::cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch) const
 {
     std::uint16_t cmd = static_cast<std::uint16_t>(ADOW);
     cmd |= static_cast<std::uint16_t>(md);
