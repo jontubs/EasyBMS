@@ -211,26 +211,21 @@ public:
     void cfgSetADCMode(ADCFilterMode mode);
     ADCFilterMode cfgGetADCMode() const;
 
-    bool readCells(const unsigned int groupCount = 4);
-    bool readAuxiliary(const unsigned int group);
-    bool readStatus(const unsigned int group);
-
     bool checkSPI(const bool dbgOut);
-
     void readCfgDbg();
     void readStatusDbg();
     void readCellsDbg();
 
     template<std::size_t N>
-    void getCellVoltages(std::array<float, N> &voltages, const CellChannel = CellChannel::CH_ALL);
+    bool getCellVoltages(std::array<float, N> &voltages, const CellChannel ch = CellChannel::CH_ALL);
     float getAuxVoltage(const AuxChannel chg);
     float getStatusVoltage(const StatusGroup chst);
+    bool getStatusMUXFail();
+    bool getStatusThermalShutdown();
     //Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
-    std::bitset<12> getOverVoltageFlags() const;
+    std::bitset<12> getStatusOverVoltageFlags();
     //Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
-    std::bitset<12> getUnderVoltageFlags() const;
-    bool getMUXFail() const;
-    bool getThermalShutdown() const;
+    std::bitset<12> getStatusUnderVoltageFlags();
 
     float cellComputeSOC(float voc);
 
@@ -275,7 +270,15 @@ private:
     };
 
     enum BitMasks {
+        /**
+         * Configuration register 4 discharge cell bitmask.
+         */
+        CFG4_DCC_MSK    = 0xff,
 
+        /**
+         * Configuration register 5 discharge cell bitmask.
+         */
+        CFG5_DCC_MSK    = 0x0f,
     };
 
     /**
@@ -423,10 +426,7 @@ private:
     
     std::array<float, CELLNUM> cellVoltage;	//Cell voltage on volt
     std::array<float, AUXNUM> auxVoltage;	//Voltage of GPIOS and VREF2 in Volt
-    float SumCellVoltages;	                //Sum of all cell voltages
-    float AnalogSupplyVoltage;	            //16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA � 100�V Normal Range Is within 4.5V to 5.5V
-    float DigitalSupplyVoltage;             //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA � 100�V Normal Range Is within 2.7V to 3.6V
-    float OffsetTemp;		                //Offset of temperaturemeasurement
+    float offsetTemp;		                //Offset of temperaturemeasurement
 
     ADCMode md;
     byte pinCS;		//ChipSelectPin
