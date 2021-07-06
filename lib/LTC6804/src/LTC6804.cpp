@@ -157,11 +157,19 @@ the config has to be written to the chip after this!
 *********************************************************************************************************/
 void LTC68041::cfgSetVUV(const float Undervoltage)
 {
-    uint16_t VUV = (Undervoltage / (0.0001 * 16)) - 1;		//calc bitpattern for UV
+    unsigned int VUV = static_cast<unsigned int>(Undervoltage / (0.0001f * 16.0f)) - 1;		//calc bitpattern for UV
 
     //regs.CFGR[CFGR0] = 0xFE;
-    regs.CFGR[CFGR1] = VUV & 0xFF;        //0x4E1 ; // 2.0V
-    regs.CFGR[CFGR2] = (regs.CFGR[CFGR2] & 0xF0) | ((VUV >> 8) & 0x0F);
+    regs.CFGR[CFGR1] = VUV & CFG1_VUV_MSK;        //0x4E1 ; // 2.0V
+    regs.CFGR[CFGR2] = (regs.CFGR[CFGR2] & (~CFG2_VUV_MSK)) | ((VUV >> 8) & CFG2_VUV_MSK);
+}
+
+float LTC68041::cfgGetVUV()
+{
+    unsigned int value;
+
+    value = regs.CFGR[CFGR1] | (static_cast<unsigned int>(regs.CFGR[CFGR2] & CFG2_VUV_MSK) << 8);
+    return (static_cast<float>(value + 1) * 16.0f * 0.001f);
 }
 
 /*!******************************************************************************************************
@@ -172,11 +180,19 @@ void LTC68041::cfgSetVOV(const float Overvoltage)
 {
     //float Undervoltage=3.123;
     //float Overvoltage=3.923;
-    uint16_t VOV = (Overvoltage / (0.0001 * 16));		//Calc bitpattern for OV
+    unsigned int VOV = static_cast<unsigned int>(Overvoltage / (0.0001f * 16.0f));		//Calc bitpattern for OV
 
     //regs.CFGR[CFGR0] = 0xFE;
-    regs.CFGR[CFGR2] = (regs.CFGR[CFGR2] & 0x0F) | ((VOV << 4) & 0xF0) ;
-    regs.CFGR[CFGR3] = (VOV >> 4) & 0xFF;
+    regs.CFGR[CFGR2] = (regs.CFGR[CFGR2] & (~CFG2_VOV_MSK)) | ((VOV << 4) & CFG2_VOV_MSK) ;
+    regs.CFGR[CFGR3] = (VOV >> 4) & CFG3_VOV_MSK;
+}
+
+float LTC68041::cfgGetVOV()
+{
+    unsigned int value;
+
+    value = ((regs.CFGR[CFGR2] & CFG2_VOV_MSK) >> 4) | (static_cast<unsigned int>(regs.CFGR[CFGR3]) << 4);
+    return (static_cast<float>(value) * 16.0f * 0.001f);
 }
 
 /*!*******************************************************************************************************
@@ -202,18 +218,22 @@ Sets  the configuration array for cell balancing
   1. Reset all Discharge Pins
   2. Calculate adcv cmd PEC and load pec into cmd array
   Discharge this cell (1-12), disable all other, IF -1 then all off
-  TODO: refactor
 *********************************************************************************************************/
 void LTC68041::cfgSetDCC(std::bitset<12> dcc)
 {
     // assert 0x0fff
-    regs.CFGRx[CFGR4] = (dcc.to_ulong() & 0x00ff); // (regs.CFGRx[CFGR1] & CFG1_DCC_INVMSK) |
-    regs.CFGRx[CFGR5] = (regs.CFGR[CFGR5] & (~CFG5_DCC_MSK)) | ((dcc.to_ulong() & 0x0f00) >> 8);
+    regs.CFGRx[CFGR4] = (dcc.to_ulong() & CFG4_DCC_MSK); // (regs.CFGRx[CFGR1] & CFG1_DCC_INVMSK) |
+    regs.CFGRx[CFGR5] = (regs.CFGR[CFGR5] & (~CFG5_DCC_MSK)) | ((dcc.to_ulong() >> 8) & CFG5_DCC_MSK);
 }
 
 std::bitset<12> LTC6804::cfgGetDCC() const
 {
-    return std::bitset<12>{static_cast<unsigned long long>((regs.CFGR[CFGR4] & CFG4_DCC_MSK) | ((regs.CFGR[CFGR5] & CFG5_DCC_MSK) << 8))};
+    return std::bitset<12>{regs.CFGR[CFGR4] | (static_cast<unsigned long long>(regs.CFGR[CFGR5] & CFG5_DCC_MSK) << 8)};
+}
+
+void cfgSetDischargeTimeout(DischargeTimeout timeout)
+{
+    regs.CFGR[CFGR5] = (regs.CFGR[CFGR5] & (~CFG5_DCTO_MSK)) | static_cast<std::uint8_t>(timeout);
 }
 
 
@@ -229,31 +249,46 @@ void LTC68041::cfgSetADCMode(ADCFilterMode mode)
     {
         case ADCFilterMode::BANDWIDTH_27KHZ:
             md = MD_FAST;
-            regs.CFGR[CFGR0] &= 0xFE;
+            regs.CFGR[CFGR0] &= ~(1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_7KHZ:
             md = MD_NORMAL;
-            regs.CFGR[CFGR0] &= 0xFE;
+            regs.CFGR[CFGR0] &= ~(1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_26HZ:
             md = MD_FILTERED;
-            regs.CFGR[CFGR0] &= 0xFE;
+            regs.CFGR[CFGR0] &= ~(1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_14KHZ:
             md = MD_FAST;
-            regs.CFGR[CFGR0] |= 0x1;
+            regs.CFGR[CFGR0] = (regs.CFGR[CFGR0] & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_3KHZ:
             md = MD_NORMAL;
-            regs.CFGR[CFGR0] |= 0x1;
+            regs.CFGR[CFGR0] = (regs.CFGR[CFGR0] & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_2KHZ:
             md = MD_FILTERED;
-            regs.CFGR[CFGR0] |= 0x1;
+            regs.CFGR[CFGR0] = (regs.CFGR[CFGR0] & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos));
             break;
         default:
             break;
     }
+}
+
+void cfgSetRefOn(const bool value)
+{
+    regs.CFGR[CFGR0] = (regs.CFGR[CFGR0] & (~CFG0_REFON_MSK)) | (value << CFGR0_REFON_Pos);
+}
+
+bool cfgGetRefOn()
+{
+    return (regs.CFGR[CFGR0] & CFG0_REFON_MSK);
+}
+
+bool cfgGetSWTENPin() const
+{
+    return (regs.CFGR[CFGR0] & CFG0_SWTRD_MSK);
 }
 
 /*!******************************************************************************************************
@@ -450,7 +485,7 @@ inline void LTC68041::parseVoltages(const unsigned int group, const std::array<s
 
     for(int i = 0; i < (regs.size() - 1); i++)
     {
-        data[index++] = static_cast<float>(regs[i] | (regs[++i] << 8)) * 100E-6;
+        data[index++] = static_cast<float>(regs[i] | (static_cast<unsigned int>(regs[++i]) << 8)) * 100E-6;
     }
 }
 
@@ -637,23 +672,33 @@ float LTC68041::getStatusVoltage(const StatusGroup chst)
             if(!spi_read_cmd(static_cast<std::uint16_t>(RDSTATA), regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Sum of all cell voltages Sum of all cell voltages = SOC * 100µV * 20
-            return static_cast<float>(regs.STAR[STAR0] | (regs.STAR[STAR1]) << 8) * 100E-6 * 20.0;
+            return static_cast<float>(regs.STAR[STAR0] | (static_cast<unsigned int>(regs.STAR[STAR1])) << 8) * 100E-6 * 20.0;
         case StatusGroup::CHST_ITMP:
             if(!spi_read_cmd(static_cast<std::uint16_t>(RDSTATA), regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP * 100µV / 7.5mV/°C - 273°C
-            return (static_cast<float>(regs.STAR[STAR2] | (regs.STAR[STAR3]) << 8) * 100E-6 / 7.5E-3 - 273.0 ) + offsetTemp;
+            return (static_cast<float>(regs.STAR[STAR2] | (static_cast<unsigned int>(regs.STAR[STAR3])) << 8) * 100E-6 / 7.5E-3 - 273.0 ) + offsetTemp;
         case StatusGroup::CHST_VA:
             if(!spi_read_cmd(static_cast<std::uint16_t>(RDSTATA), regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA * 100µV Normal Range Is within 4.5V to 5.5V
-            return static_cast<float>(regs.STAR[STAR4] | (regs.STAR[STAR5]) << 8) * 100E-6;
+            return static_cast<float>(regs.STAR[STAR4] | (static_cast<unsigned int>(regs.STAR[STAR5])) << 8) * 100E-6;
         case StatusGroup::CHST_VD:
             if(!spi_read_cmd(static_cast<std::uint16_t>(RDSTATB), regs.STBR))
                 return NAN;
             //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA * 100µV Normal Range Is within 2.7V to 3.6V
-            return static_cast<float>(regs.STBR[STBR0] | (regs.STBR[STBR1]) << 8) * 100E-6;
+            return static_cast<float>(regs.STBR[STBR0] | (static_cast<unsigned int>(regs.STBR[STBR1])) << 8) * 100E-6;
     }
+}
+
+bool getStatusMUXFail()
+{
+    return (regs.STBR[STBR5] & STBR5_MUXFAIL_MSK);
+}
+
+bool getStatusThermalShutdown()
+{
+    return (regs.STBR[STBR5] & STBR5_THSD_MSK);
 }
 
 /*!******************************************************************************************************
@@ -679,7 +724,7 @@ void LTC68041::readStatusDbg()
         Serial.print(" ");
     }
 
-    std::uint16_t ITMP = regs.STAR[STAR2] | ((uint16_t)regs.STAR[STAR3]) << 8;
+    std::uint16_t ITMP = regs.STAR[STAR2] | (static_cast<unsigned int>(regs.STAR[STAR3]) << 8);
 
     Serial.println("");
     Serial.print("ITMP:");

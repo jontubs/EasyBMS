@@ -207,6 +207,7 @@ public:
     void cfgSetDischargeTimeout(DischargeTimeout timeout);
     DischargeTimeLeft cfgGetDischargeTimeLeft() const;
     void cfgSetRefOn(const bool value);
+    bool cfgGetRefOn();
     bool cfgGetSWTENPin() const;
     void cfgSetADCMode(ADCFilterMode mode);
     ADCFilterMode cfgGetADCMode() const;
@@ -238,13 +239,11 @@ public:
     void cmdADSTAT(StatusGroup chst = StatusGroup::CHST_ALL) const;
     void cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL) const;
 
-protected:
-
 private:
 
-    static constexpr byte CELLNUM = 12; //Number of cells checked by this Chip
-    static constexpr byte AUXNUM = 6;   //Number of Auxiliary Voltages
-    static constexpr byte SIZEREG = 6; 	//All registers have the same length
+    static constexpr int CELLNUM = 12;  //Number of cells checked by this Chip
+    static constexpr int AUXNUM = 6;    //Number of Auxiliary Voltages
+    static constexpr int SIZEREG = 6; 	//All registers have the same length
 
     static constexpr int DCTOPos = 4;
     static constexpr int MDPos = 7;
@@ -257,28 +256,52 @@ private:
      * 
      */
     enum CfgBits {
-        STBR5_MUXFAIL_Pos = 0,            //Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
-        STBR5_THSD_Pos = 1,               //Thermal Shutdown Status Read: 0 -> Thermal Shutdown Has Not Occurred 1 -> Thermal Shutdown Has Occurred THSD Bit Cleared to 0 on Read of Status RegIster Group B
-        CFGR0_ADCOPT_Pos = 0,
-        CFGR0_SWTRD_Pos = 1,
-        CFGR0_REFON_Pos = 2,
-        CFGR0_GPIO1_Pos = 3,
-        CFGR0_GPIO2_Pos = 4,
-        CFGR0_GPIO3_Pos = 5,
-        CFGR0_GPIO4_Pos = 6,
-        CFGR0_GPIO5_Pos = 7,
+        CFGR0_ADCOPT_Pos    = 0,
+        CFGR0_REFON_Pos     = 2,
+        CFGR0_GPIO1_Pos     = 3,
+        CFGR0_GPIO2_Pos     = 4,
+        CFGR0_GPIO3_Pos     = 5,
+        CFGR0_GPIO4_Pos     = 6,
+        CFGR0_GPIO5_Pos     = 7,
     };
 
-    enum BitMasks {
+    enum BitMasks : std::uint8_t {
+        CFG0_ADCOPT_MSK     = 0x01,
+        CFG0_SWTRD_MSK      = 0x02,
+        CFG0_REFON_MSK      = 0x04,
+        CFG0_GPIO1_MSK      = 0x08,
+        CFG0_GPIO2_MSK      = 0x10,
+        CFG0_GPIO3_MSK      = 0x20,
+        CFG0_GPIO4_MSK      = 0x40,
+        CFG0_GPIO5_MSK      = 0x80,
+        CFG1_VUV_MSK        = 0xFF,
+        CFG2_VUV_MSK        = 0x0F,
+        CFG2_VOV_MSK        = 0xF0,
+        CFG3_VOV_MSK        = 0xFF,
+
         /**
          * Configuration register 4 discharge cell bitmask.
          */
-        CFG4_DCC_MSK    = 0xff,
+        CFG4_DCC_MSK        = 0xFF,
 
         /**
          * Configuration register 5 discharge cell bitmask.
          */
-        CFG5_DCC_MSK    = 0x0f,
+        CFG5_DCC_MSK        = 0x0F,
+
+        CFG5_DCTO_MSK       = 0xF0,
+
+        /**
+         * Thermal Shutdown Status Read: 0 -> Thermal Shutdown Has Not Occurred 1 -> Thermal Shutdown Has Occurred THSD Bit Cleared to 0 on Read of Status RegIster Group B
+         */
+        STBR5_THSD_MSK      = 0x01,
+
+        /**
+         * Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
+         */
+        STBR5_MUXFAIL_MSK   = 0x02,
+
+        STBR5_REV_MSK       = 0xF0,
     };
 
     /**
