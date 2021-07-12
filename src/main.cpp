@@ -1,6 +1,5 @@
-#include <Arduino.h>
 #include <LTC6804.h>
-#include <SPI.h>
+#include <LTC6804.cpp>
 
 int error = 0;
 static LTC68041 LTC = LTC68041(D8);
@@ -51,8 +50,7 @@ void loop()
     {
 
         digitalWrite(D2, HIGH);
-        LTC.CFGRw[4]=0;
-        LTC.CFGRw[5]=0;
+        LTC.cfgSetDCC(std::bitset<12>{0b000000000000});  //alternative bitset.reset()
         //LTC.DischargeW[0]=1;
         //LTC.DischargeW[8]=1;
     }
@@ -60,41 +58,36 @@ void loop()
     {
         //einfach ein bisschen die discharge pins flippen um zu gucken obs geht
         digitalWrite(D2, LOW);
-        LTC.CFGRw[4]=0xFF;
-        LTC.CFGRw[5]=0x0F;
+        LTC.cfgSetDCC(std::bitset<12>{0b111111111111});  //alternative bitset.set()
         //LTC.DischargeW[0]=0;
         //LTC.DischargeW[8]=0;
     }
 
-    LTC.cfgWrite(LTC.CFGRw);
+    LTC.cfgWrite();
     //Start different Analog-Digital-Conversions in the Chip
     
-    LTC.cmdADCV(LTC68041::DischargeCtrl::DCP_DISABLED);
+    LTC.cmdADCV(LTC68041::DCP_DISABLED);
     LTC.cmdADAX();
     LTC.cmdADSTAT();
     delay(20);   //Wait until everything is finished
 
     //Read the raw values into the controller
-    LTC.readCells();
-    LTC.readAUX(0xA);
-    LTC.readAUX(0xB);
-    LTC.readStatus(0xA);
-    LTC.readStatus(0xB);
+    std::array<float, 6> tmp;
+    LTC.getCellVoltages<6>(tmp, LTC68041::CH_ALL);  // read all channel (2nd parameter default), use only 6 (size of array)
+    LTC.getAuxVoltage(LTC68041::CHG_ALL);
+    LTC.getStatusVoltage(LTC68041::CHST_ALL);
     LTC.cfgRead();
 
     //LTC.cnvDischarge(LTC.DischargeW);
     //LTC.rditemp();
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
 
-    Serial.print("\nConfig zurückgelesen: ");
+    LTC.readCfgDbg();
     LTC.readStatusDbg();
-    Serial.println("");
-
     LTC.readCellsDbg();
 
-    Serial.print("\nModule Voltage: ");
-    Serial.print(LTC.SumCellVoltages);
-    Serial.print("\r\n");
+    Serial.print("Sum of all Cells Voltage: ");
+    Serial.println(LTC.getStatusVoltage(LTC68041::CHST_SOC));
 
     delay(100);
 }
