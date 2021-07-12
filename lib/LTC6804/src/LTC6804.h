@@ -10,18 +10,29 @@ https://github.com/jontubs/EasyBMS
 #ifndef LTC68041_H
 #define LTC68041_H
 
+#include <Arduino.h>
+#include <SPI.h>
+
 #include <array>
 #include <bitset>
 
 class LTC68041
 {
+private:
+
+    static constexpr int DCTOPos = 4;
+    static constexpr int MDPos = 7;
+    static constexpr int DCPPos = 4;
+    static constexpr int STPos = 5;
+    static constexpr int PUPPos = 6;
+
 public:
 
     /**
      * @brief Discharge timeouts in DCTO bits in CFGR5
      * 
      */
-    enum class DischargeTimeout : std::uint8_t {
+    enum DischargeTimeout : std::uint8_t {
         DISCHRG_TIMEOUT_DISABLED    = 0x0 << DCTOPos,
         DISCHRG_TIMEOUT_0MIN5       = 0x1 << DCTOPos,
         DISCHRG_TIMEOUT_1MIN        = 0x2 << DCTOPos,
@@ -44,7 +55,7 @@ public:
      * @brief Discharge time left values on DCTO read in CFGR5
      * 
      */
-    enum class DischargeTimeLeft : std::uint8_t {
+    enum DischargeTimeLeft : std::uint8_t {
         DISCHRG_TIME_LEFT_TIMEOUT_DISABLED  = 0x0 << DCTOPos,
         DISCHRG_TIME_LEFT_0MIN_TO_0MIN5     = 0x1 << DCTOPos,
         DISCHRG_TIME_LEFT_0MIN5_TO_1MIN     = 0x2 << DCTOPos,
@@ -73,7 +84,7 @@ public:
      * | 3kHz Mode                   |
      * | 2kHz Mode                   |
      */
-    enum class ADCFilterMode {
+    enum ADCFilterMode {
         FAST,
         NORMAL,
         FILTERED,
@@ -98,7 +109,7 @@ public:
      * |101| 5    | Cell 5 and Cell 11  |
      * |110| 6    | Cell 6 and Cell 12  |
      */
-    enum class CellChannel : std::uint16_t {
+    enum CellChannel : std::uint16_t {
         CH_ALL           = 0b000,
         CH_CELL_1_AND_7  = 0b001,
         CH_CELL_2_AND_8  = 0b010,
@@ -121,7 +132,7 @@ public:
      * |101 | 5    | GPIO 5               |
      * |110 | 6    | Vref2                |
      */
-    enum class AuxChannel : std::uint16_t {
+    enum AuxChannel : std::uint16_t {
         CHG_ALL   = 0b000,
         CHG_GPIO1 = 0b001,
         CHG_GPIO2 = 0b010,
@@ -142,7 +153,7 @@ public:
      * |011 | 3    | VA               |
      * |100 | 4    | VD               |
      */
-    enum class StatusGroup : std::uint16_t {
+    enum StatusGroup : std::uint16_t {
         CHST_ALL  = 0b000,
         CHST_SOC  = 0b001,
         CHST_ITMP = 0b010,
@@ -158,7 +169,7 @@ public:
      * |01| 1    | Self-Test 1    |
      * |10| 2    | Self-Test 2    |
      */
-    enum class SelfTestMode : std::uint16_t {
+    enum SelfTestMode : std::uint16_t {
         ST_SELF_TEST_1 = (0b01 << STPos),
         ST_SELF_TEST_2 = (0b10 << STPos),
     };
@@ -172,7 +183,7 @@ public:
      * |0   | No - discharge is not permitted        |
      * |1   | Yes - discharge is permitted           |
      */
-    enum class DischargeCtrl : std::uint16_t {
+    enum DischargeCtrl : std::uint16_t {
         DCP_DISABLED = (0b0 << DCPPos),
         DCP_ENABLED  = (0b1 << DCPPos),
     };
@@ -186,7 +197,7 @@ public:
      * |0   | Pull-Down Current         |
      * |1   | Pull-Up Current           |
      */
-    enum class PUPCtrl : std::uint16_t {
+    enum PUPCtrl : std::uint16_t {
         PUP_PULL_DOWN = (0b0 << PUPPos),
         PUP_PULL_UP   = (0b1 << PUPPos),
     };
@@ -218,38 +229,31 @@ public:
     void readCellsDbg();
 
     template<std::size_t N>
-    bool getCellVoltages(std::array<float, N> &voltages, const CellChannel ch = CellChannel::CH_ALL);
+    bool getCellVoltages(std::array<float, N> &voltages, const CellChannel ch = CH_ALL);
     float getAuxVoltage(const AuxChannel chg);
     float getStatusVoltage(const StatusGroup chst);
     bool getStatusMUXFail();
     bool getStatusThermalShutdown();
-    //Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
     std::bitset<12> getStatusOverVoltageFlags();
-    //Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
     std::bitset<12> getStatusUnderVoltageFlags();
+    int getStatusRevision();
 
     float cellComputeSOC(float voc);
 
     void cmdCLRAUX() const;
     void cmdCLRCELL() const;
     void cmdADAX(AuxChannel chg = AuxChannel::CHG_ALL) const;
-    void cmdADCV(DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL) const;
+    void cmdADCV(DischargeCtrl dcp, CellChannel ch = CH_ALL) const;
     void cmdCVST(SelfTestMode st) const;
     void cmdADCVAX(DischargeCtrl dcp) const;
     void cmdADSTAT(StatusGroup chst = StatusGroup::CHST_ALL) const;
-    void cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL) const;
+    void cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CH_ALL) const;
 
 private:
 
     static constexpr int CELLNUM = 12;  //Number of cells checked by this Chip
     static constexpr int AUXNUM = 6;    //Number of Auxiliary Voltages
     static constexpr int SIZEREG = 6; 	//All registers have the same length
-
-    static constexpr int DCTOPos = 4;
-    static constexpr int MDPos = 7;
-    static constexpr int DCPPos = 4;
-    static constexpr int STPos = 5;
-    static constexpr int PUPPos = 6;
 
     /**
      * @brief Position of config and status bits in corresponding registers
