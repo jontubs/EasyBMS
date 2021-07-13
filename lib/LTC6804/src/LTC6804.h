@@ -487,12 +487,12 @@ private:
     };
 
     template<std::size_t N>
-    void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<float, N> &data);
+    constexpr void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<float, N> &data);
 
-    std::uint16_t calcPEC15(const std::uint16_t data) const;
+    constexpr std::uint16_t calcPEC15(const std::uint16_t data) const;
 
     template<std::size_t N>
-    std::uint16_t calcPEC15(const std::array<std::uint8_t, N> &data) const;
+    constexpr std::uint16_t calcPEC15(const std::array<std::uint8_t, N> &data) const;
 
     template<std::size_t N>
     bool spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data);
