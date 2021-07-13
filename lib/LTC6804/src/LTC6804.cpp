@@ -198,16 +198,16 @@ Giving additional Debug infos via Serial
 
 void LTC68041::readCfgDbg()
 {
-    Serial.println("");
+    Serial.println();
     Serial.print("Gelesene Config: ");
 
     for (const auto &element : regs.CFGR)
     {
         Serial.print(element, HEX);
-        Serial.print("\t");
+        Serial.print(" ");
     }
 
-    Serial.println("");
+    Serial.println();
 }
 
 /*!******************************************************************************************************
@@ -546,7 +546,7 @@ bool LTC68041::checkSPI(const bool dbgOut)
     if(dbgOut)
     {
         digitalWrite(LED_BUILTIN, LOW);
-        Serial.println("");
+        Serial.println();
         Serial.print("RSP: ");
 
         for(const auto &element : response)
@@ -555,7 +555,7 @@ bool LTC68041::checkSPI(const bool dbgOut)
             Serial.print(" ");
         }
 
-        Serial.println("");
+        Serial.println();
     }
 
     if(ret)
@@ -778,7 +778,7 @@ Kind of debug function, a lot information are printed via Serial
 *********************************************************************************************************/
 void LTC68041::readStatusDbg()
 {
-    Serial.println("");
+    Serial.println();
     Serial.print("RSP Status A: ");
 
     for(const auto &element : regs.STAR)
@@ -787,7 +787,7 @@ void LTC68041::readStatusDbg()
         Serial.print(" ");
     }
 
-    Serial.println("");
+    Serial.println();
     Serial.print("RSP Status B: ");
 
     for(const auto &element : regs.STBR)
@@ -798,14 +798,14 @@ void LTC68041::readStatusDbg()
 
     std::uint16_t ITMP = regs.STAR[STAR2] | (regs.STAR[STAR3] << 8);
 
-    Serial.println("");
+    Serial.println();
     Serial.print("ITMP:");
     Serial.println(ITMP, HEX);
 
     //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (�C) = ITMP � 100�V/7.5mV/�C � 273�C
     Serial.print("InternalTemp:");
     Serial.println(getStatusVoltage(StatusGroup::CHST_ITMP));
-    Serial.println("");
+    Serial.println();
 }
 
 /*!*******************************************************************************************************
@@ -933,7 +933,7 @@ Reads and parses the LTC6804 cell voltage registers and returns some additional 
 *********************************************************************************************************/
 void LTC68041::readCellsDbg() // Array of the parsed cell codes
 {
-    Serial.println("");
+    Serial.println();
     Serial.print("Cell Voltage A: ");
 
     for(const auto &element : regs.CVAR)
@@ -942,7 +942,7 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
         Serial.print(" ");
     }
 
-    Serial.println("");
+    Serial.println();
     Serial.print("Cell Voltage B: ");
 
     for(const auto &element : regs.CVBR)
@@ -951,7 +951,7 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
         Serial.print(" ");
     }
 
-    Serial.println("");
+    Serial.println();
     Serial.print("Cell Voltage C: ");
 
     for(const auto &element : regs.CVCR)
@@ -960,7 +960,7 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
         Serial.print(" ");
     }
 
-    Serial.println("");
+    Serial.println();
     Serial.print("Cell Voltage D: ");
 
     for(const auto &element : regs.CVDR)
@@ -969,6 +969,7 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
         Serial.print(" ");
     }
 
+    Serial.println();
     Serial.print("Cell Voltages: ");
 
     for (const auto &element : cellVoltage)
@@ -977,7 +978,7 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
         Serial.print("\t");
     }
 
-    Serial.println("");
+    Serial.println();
 }
 
 inline void serialPrint(uint8_t data)
@@ -998,11 +999,14 @@ inline void serialPrint(float data)
 template<typename T, std::size_t N>
 void printArray(std::array<T, N> &arr)
 {
-    Serial.print("\nArray Content | ");
+    Serial.println();
+    Serial.print("Array Content | ");
+
     for(const auto &element : arr)
     {
         serialPrint(element);
         Serial.print("\t");
     }
+
     Serial.print(" |END \n");
 }

@@ -28,12 +28,14 @@ void loop()
     if (LTC.checkSPI(true))
     {
         digitalWrite(D1, HIGH);
-        Serial.println("\nSPI ok");
+        Serial.println();
+        Serial.println("SPI ok");
     }
     else
     {
         digitalWrite(D1, LOW);
-        Serial.println("\nSPI lost");
+        Serial.println();
+        Serial.println("SPI lost");
     }
 
     LTC.cfgSetVUV(3.1);
@@ -65,7 +67,7 @@ void loop()
 
     LTC.cfgWrite();
     //Start different Analog-Digital-Conversions in the Chip
-    
+
     LTC.cmdADCV(LTC68041::DCP_DISABLED);
     LTC.cmdADAX();
     LTC.cmdADSTAT();
