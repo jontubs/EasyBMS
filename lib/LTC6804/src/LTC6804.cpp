@@ -69,17 +69,15 @@ void LTC68041::wakeup_idle() const
 /*!******************************************************************************************************
 Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
-std::uint16_t LTC68041::calcPEC15(const std::uint16_t data) const
+constexpr std::uint16_t LTC68041::calcPEC15(const std::uint16_t data) const
 {
-    std::uint16_t remainder,addr;
-    const std::uint8_t *p_data = reinterpret_cast<const std::uint8_t *>(&data);
+    std::uint16_t remainder = 16, addr = 0;//initialize the PEC
 
-    remainder = 16;//initialize the PEC
-    for(unsigned int i = 0; i < sizeof(std::uint16_t); i++)
-    {
-        addr = ((remainder >> 7) ^ p_data[i]) & 0xff;//calculate PEC table address
-        remainder = (remainder << 8) ^ crc15Table[addr];
-    }
+    addr = ((remainder >> 7) ^ (data >> 8)) & 0xff;//calculate PEC table address
+    remainder = (remainder << 8) ^ crc15Table[addr];
+
+    addr = ((remainder >> 7) ^ (data & 0xff)) & 0xff;//calculate PEC table address
+    remainder = (remainder << 8) ^ crc15Table[addr];
 
     return(remainder * 2);//The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
 }
@@ -88,11 +86,10 @@ std::uint16_t LTC68041::calcPEC15(const std::uint16_t data) const
 Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
 template<std::size_t N>
-std::uint16_t LTC68041::calcPEC15(const std::array<std::uint8_t, N> &data) const
+constexpr std::uint16_t LTC68041::calcPEC15(const std::array<std::uint8_t, N> &data) const
 {
-    std::uint16_t remainder,addr;
+    std::uint16_t remainder = 16, addr = 0;//initialize the PEC
 
-    remainder = 16;//initialize the PEC
     for (const auto &element : data) // loops for each byte in data array
     {
         addr = ((remainder >> 7) ^ element) & 0xff;//calculate PEC table address
@@ -479,7 +476,7 @@ bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel
  * @param data Array for target values
  */
 template<std::size_t N>
-inline void LTC68041::parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<float, N> &data)
+constexpr inline void LTC68041::parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<float, N> &data)
 {
     unsigned int index = (group) * 3;
 
