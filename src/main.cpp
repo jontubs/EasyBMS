@@ -8,7 +8,7 @@ int error = 0;
 static LTC68041 LTC = LTC68041(D7, D6, D5, D8);
 
 static unsigned long timer;
-static unsigned long diff=1000;
+static unsigned long diff=5000;
 static bool flip;
 
 
@@ -112,5 +112,5 @@ void loop()
   Serial.print(LTC.SumCellVoltages);
   Serial.print("\r\n");
 
-  delay(100);
+  delay(500);
 }
