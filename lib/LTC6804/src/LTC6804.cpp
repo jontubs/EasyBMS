@@ -191,25 +191,6 @@ float LTC68041::cfgGetVOV() const
     return (static_cast<float>(value) * 16.0f * 0.001f);
 }
 
-/*!*******************************************************************************************************
-Reads configuration registers of a LTC6804
-Giving additional Debug infos via Serial
-*********************************************************************************************************/
-
-void LTC68041::readCfgDbg()
-{
-    Serial.println();
-    Serial.print("Gelesene Config: ");
-
-    for (const auto &element : regs.CFGR)
-    {
-        Serial.print(element, HEX);
-        Serial.print(" ");
-    }
-
-    Serial.println();
-}
-
 /*!******************************************************************************************************
 Sets  the configuration array for cell balancing
   1. Reset all Discharge Pins
@@ -773,41 +754,6 @@ int LTC68041::getStatusRevision()
     return ((regs.STBR[STBR5] & STBR5_REV_MSK) >> 4);
 }
 
-/*!******************************************************************************************************
-Kind of debug function, a lot information are printed via Serial
-*********************************************************************************************************/
-void LTC68041::readStatusDbg()
-{
-    Serial.println();
-    Serial.print("RSP Status A: ");
-
-    for(const auto &element : regs.STAR)
-    {
-        Serial.print(element, HEX);
-        Serial.print(" ");
-    }
-
-    Serial.println();
-    Serial.print("RSP Status B: ");
-
-    for(const auto &element : regs.STBR)
-    {
-        Serial.print(element, HEX);
-        Serial.print(" ");
-    }
-
-    std::uint16_t ITMP = regs.STAR[STAR2] | (regs.STAR[STAR3] << 8);
-
-    Serial.println();
-    Serial.print("ITMP:");
-    Serial.println(ITMP, HEX);
-
-    //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (�C) = ITMP � 100�V/7.5mV/�C � 273�C
-    Serial.print("InternalTemp:");
-    Serial.println(getStatusVoltage(StatusGroup::CHST_ITMP));
-    Serial.println();
-}
-
 /*!*******************************************************************************************************
   Starts cell voltage ADC conversions of the LTC6804 Cpin inputs.
   The type of ADC conversion executed can be changed by setting the associated global variables:  
@@ -896,7 +842,7 @@ void LTC68041::cmdADSTAT(StatusGroup chst) const
     cmd |= md;
     cmd |= chst;
 
-    wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
+    //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
     spi_write_cmd(cmd);
 }
 
@@ -919,22 +865,124 @@ void LTC68041::cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch) const
     spi_write_cmd(cmd);
 }
 
+/*!*******************************************************************************************************
+Prints out configuration registers of a LTC6804
+Giving additional Debug infos via Serial
+*********************************************************************************************************/
+void LTC68041::readCfgDbg()
+{
+    Serial.println();
+    Serial.print("Config Register Group: ");
+
+    for (const auto &element : regs.CFGR)
+    {
+        Serial.print(element, HEX);
+        Serial.print(" ");
+    }
+
+    Serial.println();
+}
+
+/*!******************************************************************************************************
+Prints out Status Register Groups and parsed values
+*********************************************************************************************************/
+void LTC68041::readStatusDbg()
+{
+    Serial.println();
+    Serial.print("RSP Status Register Group A: ");
+
+    for(const auto &element : regs.STAR)
+    {
+        Serial.print(element, HEX);
+        Serial.print(" ");
+    }
+
+    Serial.println();
+    Serial.print("RSP Status Register Group B: ");
+
+    for(const auto &element : regs.STBR)
+    {
+        Serial.print(element, HEX);
+        Serial.print(" ");
+    }
+
+    Serial.println();
+    Serial.print("Internal Temperature: ");
+    Serial.print(getStatusVoltage(StatusGroup::CHST_ITMP));
+    Serial.println(" °C");
+
+    Serial.print("Sum of all Cells Voltage: ");
+    Serial.print(getStatusVoltage(LTC68041::CHST_SOC));
+    Serial.println(" V");
+
+    Serial.print("Analog Supply Voltage: ");
+    Serial.print(getStatusVoltage(LTC68041::CHST_VA));
+    Serial.println(" V");
+
+    Serial.print("Digital Supply Voltage: ");
+    Serial.print(getStatusVoltage(LTC68041::CHST_VD));
+    Serial.println(" V");
+
+    Serial.print("Overvoltageflags: ");
+    Serial.println(getStatusOverVoltageFlags().to_ulong(), BIN);
+
+    Serial.print("Undervoltageflags: ");
+    Serial.println(getStatusUnderVoltageFlags().to_ulong(), BIN);
+
+    Serial.print("Chip Revision: ");
+    Serial.println(getStatusRevision(), DEC);
+
+    Serial.print("Muxfail: ");
+    Serial.println(getStatusMUXFail());
+
+    Serial.print("Thermalshutdown: ");
+    Serial.println(getStatusThermalShutdown());
+}
+
+void LTC68041::readAuxDbg()
+{
+    Serial.println();
+    Serial.print("Auxiliary Register Group A: ");
+
+    for(const auto &element : regs.AVAR)
+    {
+        Serial.print(element, HEX);
+        Serial.print(" ");
+    }
+
+    Serial.println();
+    Serial.print("Auxiliary Register Group B: ");
+
+    for(const auto &element : regs.AVBR)
+    {
+        Serial.print(element, HEX);
+        Serial.print(" ");
+    }
+
+    Serial.println();
+    Serial.println("Auxiliary Voltages: ");
+    Serial.println("GPIO1   GPIO2   GPIO3   GPIO4   GPIO5   Vref");
+
+    for (const auto &element : auxVoltage)
+    {
+        Serial.print(element);
+        Serial.print(" V");
+        Serial.print("  ");
+    }
+
+    Serial.println();
+}
+
 /*!******************************************************************************************************
 Reads and parses the LTC6804 cell voltage registers and returns some additional infos via Serial
 
- The function is used to read the cell codes of the LTC6804.
- This function will send the requested read commands parse the data
- and store the cell voltages in cell_codes variable.
- 
-  1. Read every single cell voltage register
-  2. Parse raw cell voltage data in cell_codes array
-  3. Check the PEC of the data read back vs the calculated PEC for each read register command
-  4. Return pec_error flag 
+ The function is used to print out Cell Voltage Register Groups
+ and Cell Voltage values in Volt.
 *********************************************************************************************************/
 void LTC68041::readCellsDbg() // Array of the parsed cell codes
 {
     Serial.println();
-    Serial.print("Cell Voltage A: ");
+    Serial.print("Cell Voltage Register Group A: ");
 
     for(const auto &element : regs.CVAR)
     {
@@ -943,7 +991,7 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
     }
 
     Serial.println();
-    Serial.print("Cell Voltage B: ");
+    Serial.print("Cell Voltage Register Group B: ");
 
     for(const auto &element : regs.CVBR)
     {
@@ -952,7 +1000,7 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
     }
 
     Serial.println();
-    Serial.print("Cell Voltage C: ");
+    Serial.print("Cell Voltage Register Group C: ");
 
     for(const auto &element : regs.CVCR)
     {
@@ -961,7 +1009,7 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
     }
 
     Serial.println();
-    Serial.print("Cell Voltage D: ");
+    Serial.print("Cell Voltage Register Group D: ");
 
     for(const auto &element : regs.CVDR)
     {
@@ -970,12 +1018,15 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
     }
 
     Serial.println();
-    Serial.print("Cell Voltages: ");
+    Serial.println("Cell Voltages: ");
+    Serial.println("Cell 1  Cell 2  Cell 3  Cell 4  Cell 5  Cell 6  Cell 7  Cell 8  Cell 9  Cell 10 Cell 11 Cell 12");
+
 
     for (const auto &element : cellVoltage)
     {
         Serial.print(element);
-        Serial.print("\t");
+        Serial.print(" V");
+        Serial.print("  ");
     }
 
     Serial.println();

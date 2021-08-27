@@ -5,7 +5,7 @@ int error = 0;
 static LTC68041 LTC = LTC68041(D8);
 
 static unsigned long timer;
-static unsigned long diff=1000;
+static unsigned long diff = 1000;
 static bool flip;
 
 
@@ -39,13 +39,13 @@ void loop()
     }
 
     LTC.cfgSetVUV(3.1);
-    LTC.cfgSetVOV(3.9);
+    LTC.cfgSetVOV(4.2);
 
     //Local Variables
-    if((timer+diff)<millis())
+    if((timer + diff) < millis())
     {
-        timer=millis();
-        flip= !flip;
+        timer = millis();
+        flip = !flip;
     }
 
     if (flip)
@@ -69,9 +69,11 @@ void loop()
     //Start different Analog-Digital-Conversions in the Chip
 
     LTC.cmdADCV(LTC68041::DCP_DISABLED);
+    delay(5);   //Wait until conversion is finished
     LTC.cmdADAX();
+    delay(5);   //Wait until conversion is finished
     LTC.cmdADSTAT();
-    delay(20);   //Wait until everything is finished
+    delay(5);   //Wait until conversion is finished
 
     //Read the raw values into the controller
     std::array<float, 6> tmp;
@@ -86,10 +88,8 @@ void loop()
 
     LTC.readCfgDbg();
     LTC.readStatusDbg();
+    LTC.readAuxDbg();
     LTC.readCellsDbg();
 
-    Serial.print("Sum of all Cells Voltage: ");
-    Serial.println(LTC.getStatusVoltage(LTC68041::CHST_SOC));
-
-    delay(100);
+    delay(500);
 }
