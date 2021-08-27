@@ -226,6 +226,7 @@ public:
     bool checkSPI(const bool dbgOut);
     void readCfgDbg();
     void readStatusDbg();
+    void readAuxDbg();
     void readCellsDbg();
 
     template<std::size_t N>
