@@ -45,7 +45,7 @@ void loop()
     if((timer + diff) < millis())
     {
         timer = millis();
-        //flip = !flip;
+        flip = !flip;
     }
 
     if (flip)
@@ -53,16 +53,12 @@ void loop()
 
         digitalWrite(D2, HIGH);
         LTC.cfgSetDCC(std::bitset<12>{0b000000000000});  //alternative bitset.reset()
-        //LTC.DischargeW[0]=1;
-        //LTC.DischargeW[8]=1;
     }
     else
     {
         //einfach ein bisschen die discharge pins flippen um zu gucken obs geht
         digitalWrite(D2, LOW);
         LTC.cfgSetDCC(std::bitset<12>{0b111111111111});  //alternative bitset.set()
-        //LTC.DischargeW[0]=0;
-        //LTC.DischargeW[8]=0;
     }
 
     LTC.cfgWrite();
@@ -82,10 +78,7 @@ void loop()
     LTC.getStatusVoltage(LTC68041::CHST_ALL);    // nothing is read, just for documenation of usage
     LTC.cfgRead();
 
-    //LTC.cnvDischarge(LTC.DischargeW);
-    //LTC.rditemp();
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
-
     LTC.readCfgDbg();
     LTC.readStatusDbg();
     LTC.readAuxDbg();
