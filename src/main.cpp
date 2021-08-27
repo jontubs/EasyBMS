@@ -6,7 +6,7 @@ static LTC68041 LTC = LTC68041(D8);
 
 static unsigned long timer;
 static unsigned long diff = 1000;
-static bool flip;
+static bool flip = true;
 
 
 // the setup function runs once when you press reset or power the board
@@ -45,7 +45,7 @@ void loop()
     if((timer + diff) < millis())
     {
         timer = millis();
-        flip = !flip;
+        //flip = !flip;
     }
 
     if (flip)
@@ -76,10 +76,10 @@ void loop()
     delay(5);   //Wait until conversion is finished
 
     //Read the raw values into the controller
-    std::array<float, 6> tmp;
-    LTC.getCellVoltages<6>(tmp, LTC68041::CH_ALL);  // read all channel (2nd parameter default), use only 6 (size of array)
-    LTC.getAuxVoltage(LTC68041::CHG_ALL);
-    LTC.getStatusVoltage(LTC68041::CHST_ALL);
+    std::array<float, 6> voltages;
+    LTC.getCellVoltages(voltages, LTC68041::CH_ALL);  // read all channel (2nd parameter default), use only 6 (size of array)
+    LTC.getAuxVoltage(LTC68041::CHG_ALL);        // nothing is read, just for documenation of usage
+    LTC.getStatusVoltage(LTC68041::CHST_ALL);    // nothing is read, just for documenation of usage
     LTC.cfgRead();
 
     //LTC.cnvDischarge(LTC.DischargeW);
