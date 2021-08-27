@@ -203,7 +203,7 @@ public:
     };
 
     //Methods
-    explicit LTC68041(byte pCS = 10);
+    explicit LTC68041(byte pCS = 10, float tempOffset = 0.0);
     void initSPI(byte pinMOSI, byte pinMISO, byte pinCLK);
     void destroySPI();
     void wakeup_idle() const;
@@ -452,8 +452,6 @@ private:
         std::array<std::uint8_t, SIZEREG> COMM;	    // COMM Register Group
     };
     
-    std::array<float, CELLNUM> cellVoltage;	//Cell voltage on volt
-    std::array<float, AUXNUM> auxVoltage;	//Voltage of GPIOS and VREF2 in Volt
     float offsetTemp;		                //Offset of temperaturemeasurement
 
     ADCMode md;
@@ -488,7 +486,9 @@ private:
     };
 
     template<std::size_t N>
-    constexpr void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<float, N> &data);
+    constexpr void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regGroup, std::array<float, N> &data);
+
+    constexpr float parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, const RegNames index);
 
     constexpr std::uint16_t calcPEC15(const std::uint16_t data) const;
 

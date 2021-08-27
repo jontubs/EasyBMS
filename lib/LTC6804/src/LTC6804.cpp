@@ -21,8 +21,8 @@ https://github.com/jontubs/EasyBMS
  * 
  * @param pCS Pin used as chip select
  */
-LTC68041::LTC68041(byte pCS)
-  : cellVoltage({}), auxVoltage({}), offsetTemp(0.0), md(MD_NORMAL), pinCS(pCS), regs({})
+LTC68041::LTC68041(byte pCS, float tempOffset)
+  : offsetTemp(tempOffset), md(MD_NORMAL), pinCS(pCS), regs({})
 {
     Serial.print("Objekt angelegt");
 
@@ -407,6 +407,8 @@ Reads and parses the LTC6804 cell voltage registers.
 template<std::size_t N>
 bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel ch)
 {
+    std::array<float, CELLNUM> cellVoltage;	//Cell voltage on volt
+
     switch(ch)
     {
         case CellChannel::CH_ALL:
@@ -457,14 +459,19 @@ bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel
  * @param data Array for target values
  */
 template<std::size_t N>
-constexpr inline void LTC68041::parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regs, std::array<float, N> &data)
+constexpr inline void LTC68041::parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regGroup, std::array<float, N> &data)
 {
     unsigned int index = (group) * 3;
 
-    for(unsigned int i = 0; i < (regs.size() - 1); i += 2)
+    for(unsigned int i = 0; i < (regGroup.size() - 1); i += 2)
     {
-        data[index++] = static_cast<float>(regs[i] | (static_cast<unsigned int>(regs[i + 1]) << 8)) * 100E-6;
+        data[index++] = parseVoltage(regGroup, static_cast<RegNames>(i));
     }
+}
+
+constexpr inline float LTC68041::parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, const RegNames index)
+{
+    return static_cast<float>(regGroup[index] | (static_cast<unsigned int>(regGroup[index + 1]) << 8)) * 100E-6;
 }
 
 /*!*******************************************************************************************************
@@ -570,66 +577,45 @@ bool LTC68041::checkSPI(const bool dbgOut)
 *********************************************************************************************************/ 
 float LTC68041::getAuxVoltage(const AuxChannel chg)
 {
-    Commands cmd;
-    int index, parse_index;
-    std::array<std::uint8_t, SIZEREG> *p_arr;
-
     wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
 
     switch(chg)
     {
         case AuxChannel::CHG_GPIO1:
-            cmd = RDAUXA;
-            p_arr = &regs.AVAR;
-            index = 0;
-            parse_index = 0;
-            break;
+            if(!spi_read_cmd(RDAUXA, regs.AVAR))
+                return NAN;
+                
+            return parseVoltage(regs.AVAR, AVAR0);
         case AuxChannel::CHG_GPIO2:
-            cmd = RDAUXA;
-            p_arr = &regs.AVAR;
-            index = 1;
-            parse_index = 0;
-            break;
+            if(!spi_read_cmd(RDAUXA, regs.AVAR))
+                return NAN;
+                
+            return parseVoltage(regs.AVAR, AVAR2);
         case AuxChannel::CHG_GPIO3:
-            cmd = RDAUXA;
-            p_arr = &regs.AVAR;
-            index = 2;
-            parse_index = 0;
-            break;
+            if(!spi_read_cmd(RDAUXA, regs.AVAR))
+                return NAN;
+                
+            return parseVoltage(regs.AVAR, AVAR4);
         case AuxChannel::CHG_GPIO4:
-            cmd = RDAUXB;
-            p_arr = &regs.AVBR;
-            index = 3;
-            parse_index = 1;
-            break;
+            if(!spi_read_cmd(RDAUXB, regs.AVBR))
+                return NAN;
+                
+            return parseVoltage(regs.AVBR, AVBR0);
         case AuxChannel::CHG_GPIO5:
-            cmd = RDAUXB;
-            p_arr = &regs.AVBR;
-            index = 4;
-            parse_index = 1;
-            break;
+            if(!spi_read_cmd(RDAUXB, regs.AVBR))
+                return NAN;
+                
+            return parseVoltage(regs.AVBR, AVBR2);
         case AuxChannel::CHG_VREF2:
-            cmd = RDAUXB;
-            p_arr = &regs.AVBR;
-            index = 5;
-            parse_index = 1;
-            break;
+            if(!spi_read_cmd(RDAUXB, regs.AVBR))
+                return NAN;
+                
+            return parseVoltage(regs.AVBR, AVBR4);
         case AuxChannel::CHG_ALL:
-            spi_read_cmd(RDAUXA, regs.AVAR);
-            spi_read_cmd(RDAUXB, regs.AVBR);
-            parseVoltages(0, regs.AVAR, auxVoltage);
-            parseVoltages(1, regs.AVBR, auxVoltage);
             return NAN;
         default:
             return NAN;
     }
-
-    if(!spi_read_cmd(cmd, *p_arr))
-        return NAN;
-        
-    parseVoltages(parse_index, *p_arr, auxVoltage);
-
-    return auxVoltage[index];
 }
 
 /*!*******************************************************************************************************
@@ -654,25 +640,23 @@ float LTC68041::getStatusVoltage(const StatusGroup chst)
             if(!spi_read_cmd(RDSTATA, regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Sum of all cell voltages Sum of all cell voltages = SOC * 100µV * 20
-            return static_cast<float>(regs.STAR[STAR0] | (static_cast<unsigned int>(regs.STAR[STAR1])) << 8) * 100E-6 * 20.0;
+            return parseVoltage(regs.STAR, STAR0) * 20.0;
         case StatusGroup::CHST_ITMP:
             if(!spi_read_cmd(RDSTATA, regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP * 100µV / 7.5mV/°C - 273°C
-            return (static_cast<float>(regs.STAR[STAR2] | (static_cast<unsigned int>(regs.STAR[STAR3])) << 8) * 100E-6 / 7.5E-3 - 273.0 ) + offsetTemp;
+            return (parseVoltage(regs.STAR, STAR2) / 7.5E-3 - 273.0 ) + offsetTemp;
         case StatusGroup::CHST_VA:
             if(!spi_read_cmd(RDSTATA, regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA * 100µV Normal Range Is within 4.5V to 5.5V
-            return static_cast<float>(regs.STAR[STAR4] | (static_cast<unsigned int>(regs.STAR[STAR5])) << 8) * 100E-6;
+            return parseVoltage(regs.STAR, STAR4);
         case StatusGroup::CHST_VD:
             if(!spi_read_cmd(RDSTATB, regs.STBR))
                 return NAN;
             //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA * 100µV Normal Range Is within 2.7V to 3.6V
-            return static_cast<float>(regs.STBR[STBR0] | (static_cast<unsigned int>(regs.STBR[STBR1])) << 8) * 100E-6;
+            return parseVoltage(regs.STBR, STBR0);
         case StatusGroup::CHST_ALL:
-            spi_read_cmd(RDSTATA, regs.STAR);
-            spi_read_cmd(RDSTATB, regs.STBR);
             return NAN;
         default:
             return NAN;
@@ -941,6 +925,15 @@ void LTC68041::readStatusDbg()
 
 void LTC68041::readAuxDbg()
 {
+    std::array<float, AUXNUM> auxVoltage;	//Voltage of GPIOS and VREF2 in Volt
+
+    auxVoltage[0] = getAuxVoltage(CHG_GPIO1);
+    auxVoltage[1] = getAuxVoltage(CHG_GPIO2);
+    auxVoltage[2] = getAuxVoltage(CHG_GPIO3);
+    auxVoltage[3] = getAuxVoltage(CHG_GPIO4);
+    auxVoltage[4] = getAuxVoltage(CHG_GPIO5);
+    auxVoltage[5] = getAuxVoltage(CHG_VREF2);
+
     Serial.println();
     Serial.print("Auxiliary Register Group A: ");
 
@@ -961,7 +954,7 @@ void LTC68041::readAuxDbg()
 
     Serial.println();
     Serial.println("Auxiliary Voltages: ");
-    Serial.println("GPIO1   GPIO2   GPIO3   GPIO4   GPIO5   Vref");
+    Serial.println("GPIO1   GPIO2   GPIO3   GPIO4   GPIO5   Vref2");
 
     for (const auto &element : auxVoltage)
     {
@@ -981,6 +974,10 @@ Reads and parses the LTC6804 cell voltage registers and returns some additional 
 *********************************************************************************************************/
 void LTC68041::readCellsDbg() // Array of the parsed cell codes
 {
+    std::array<float, 12> cellVoltages;
+
+    getCellVoltages(cellVoltages);
+
     Serial.println();
     Serial.print("Cell Voltage Register Group A: ");
 
@@ -1021,8 +1018,7 @@ void LTC68041::readCellsDbg() // Array of the parsed cell codes
     Serial.println("Cell Voltages: ");
     Serial.println("Cell 1  Cell 2  Cell 3  Cell 4  Cell 5  Cell 6  Cell 7  Cell 8  Cell 9  Cell 10 Cell 11 Cell 12");
 
-
-    for (const auto &element : cellVoltage)
+    for (const auto &element : cellVoltages)
     {
         Serial.print(element);
         Serial.print(" V");
