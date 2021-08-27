@@ -64,11 +64,11 @@ void loop()
     LTC.cfgWrite();
     //Start different Analog-Digital-Conversions in the Chip
 
-    LTC.cmdADCV(LTC68041::DCP_DISABLED);
+    LTC.startCellConv(LTC68041::DCP_DISABLED);
     delay(5);   //Wait until conversion is finished
-    LTC.cmdADAX();
+    LTC.startAuxConv();
     delay(5);   //Wait until conversion is finished
-    LTC.cmdADSTAT();
+    LTC.startStatusConv();
     delay(5);   //Wait until conversion is finished
 
     //Read the raw values into the controller

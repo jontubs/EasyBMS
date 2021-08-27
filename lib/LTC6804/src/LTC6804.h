@@ -223,6 +223,7 @@ public:
     void cfgSetADCMode(ADCFilterMode mode);
     ADCFilterMode cfgGetADCMode() const;
 
+    // debug methods
     bool checkSPI(const bool dbgOut);
     void readCfgDbg();
     void readStatusDbg();
@@ -241,14 +242,14 @@ public:
 
     float cellComputeSOC(float voc);
 
-    void cmdCLRAUX() const;
-    void cmdCLRCELL() const;
-    void cmdADAX(AuxChannel chg = AuxChannel::CHG_ALL) const;
-    void cmdADCV(DischargeCtrl dcp, CellChannel ch = CH_ALL) const;
-    void cmdCVST(SelfTestMode st) const;
-    void cmdADCVAX(DischargeCtrl dcp) const;
-    void cmdADSTAT(StatusGroup chst = StatusGroup::CHST_ALL) const;
-    void cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CH_ALL) const;
+    void clrAuxRegs() const;
+    void clrCellRegs() const;
+    void startAuxConv(AuxChannel chg = AuxChannel::CHG_ALL) const;
+    void startCellConv(DischargeCtrl dcp, CellChannel ch = CH_ALL) const;
+    void startCellConvTest(SelfTestMode st) const;
+    void startCellAuxConv(DischargeCtrl dcp) const;
+    void startStatusConv(StatusGroup chst = StatusGroup::CHST_ALL) const;
+    void startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CH_ALL) const;
 
 private:
 

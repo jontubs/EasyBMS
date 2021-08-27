@@ -384,7 +384,7 @@ float LTC68041::cellComputeSOC(float voc) {
   2. Calculate clraux cmd PEC and load pec into cmd array
   3. send broadcast clraux command
 *********************************************************************************************************/
-void LTC68041::cmdCLRAUX() const
+void LTC68041::clrAuxRegs() const
 {
     //3
     wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
@@ -500,7 +500,7 @@ bool LTC68041::cfgRead()
   2. Calculate clrcell cmd PEC and load pec into cmd array
   3. send broadcast clrcell command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdCLRCELL() const
+void LTC68041::clrCellRegs() const
 {
     //3
     //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
@@ -745,7 +745,7 @@ int LTC68041::getStatusRevision()
   CH   Determines which cell channels are converted
   DCP  Determines if Discharge is Permitted
 *********************************************************************************************************/
-void LTC68041::cmdADCV(DischargeCtrl dcp, CellChannel ch) const
+void LTC68041::startCellConv(DischargeCtrl dcp, CellChannel ch) const
 {
 
     std::uint16_t cmd = ADCV;
@@ -763,7 +763,7 @@ void LTC68041::cmdADCV(DischargeCtrl dcp, CellChannel ch) const
 /*!******************************************************************************************************
 Starts cell voltage conversion with test values from selftest 2
 *********************************************************************************************************/
-void LTC68041::cmdCVST(SelfTestMode st) const
+void LTC68041::startCellConvTest(SelfTestMode st) const
 {
 
     std::uint16_t cmd = CVST;
@@ -784,7 +784,7 @@ void LTC68041::cmdCVST(SelfTestMode st) const
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdADAX(AuxChannel chg) const
+void LTC68041::startAuxConv(AuxChannel chg) const
 {
     std::uint16_t cmd = ADAX;
     cmd |= md;
@@ -802,7 +802,7 @@ void LTC68041::cmdADAX(AuxChannel chg) const
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdADCVAX(DischargeCtrl dcp) const
+void LTC68041::startCellAuxConv(DischargeCtrl dcp) const
 {
     std::uint16_t cmd = ADCVAX;
     cmd |= md;
@@ -820,7 +820,7 @@ void LTC68041::cmdADCVAX(DischargeCtrl dcp) const
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdADSTAT(StatusGroup chst) const
+void LTC68041::startStatusConv(StatusGroup chst) const
 {
     std::uint16_t cmd = ADSTAT;
     cmd |= md;
@@ -837,7 +837,7 @@ void LTC68041::cmdADSTAT(StatusGroup chst) const
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::cmdADOW(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch) const
+void LTC68041::startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch) const
 {
     std::uint16_t cmd = ADOW;
     cmd |= md;
