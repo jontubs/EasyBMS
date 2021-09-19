@@ -1,26 +1,27 @@
 #include <ESP8266WiFi.h>
-#include <LTC6804.h>
-#include <LTC6804.cpp>
+//#include <LTC6804.h>
+//#include <LTC6804.cpp>
 #include <lwip/dns.h>
 #include <PubSubClient.h>
 
+#include "credentials.h"
+
 int error = 0;
-static LTC68041 LTC = LTC68041(D8);
+//static LTC68041 LTC = LTC68041(D8);
 
 static unsigned long timer;
 static unsigned long diff = 1000;
 static bool flip;
 
+static const long master_timeout = 5000;
+
 unsigned int module_index = 1;
 String hostname = String("esp-module") + module_index;
-constexpr char ssid[] = "bmsmaster";
-constexpr char password[] = "4vk6y005";
-constexpr char mqtt_server[] = "10.3.141.1"; // bmsmaster
 
 WiFiClient espClient;
 PubSubClient client(mqtt_server, 1883, espClient);
 
-unsigned long alive_counter_slave = 0;
+unsigned long uptime_millis_slave = millis();
 std::array<float, 12> cell_voltage;
 
 // connect to wifi
@@ -62,7 +63,7 @@ void reconnect()
             client.publish((hostname + "/available").c_str(), "online", true);
             // ... and resubscribe
             client.subscribe((hostname + "/cell_discharge").c_str());
-            client.subscribe((hostname + "/alive_counter_master").c_str());
+            client.subscribe(String("master/uptime").c_str());
             client.subscribe((hostname + "/cell_overvoltage_limit").c_str());
             client.subscribe((hostname + "/cell_undervoltage_limit").c_str());
         }
@@ -78,9 +79,31 @@ void reconnect()
     }
 }
 
+long last_master_uptime = 0;
+
 void callback(char *topic, byte *payload, unsigned int length)
 {
-    if (!strcmp(topic, (hostname + "/cell_discharge").c_str()))
+    if (!strcmp(topic, String("master/uptime").c_str()))
+    {
+        String uptime = "";
+        for (unsigned int i = 0; i < length; i++)
+        {
+            uptime += static_cast<char>(payload[i]);
+        }
+        Serial.print("Got heartbeat from master: ");
+        Serial.println(uptime);
+
+        digitalWrite(LED_BUILTIN, LOW);
+        delay(50);
+        digitalWrite(LED_BUILTIN, HIGH);
+
+        long uptime_long = uptime.toInt();
+
+        if(uptime_long - last_master_uptime > master_timeout) {
+            Serial.println(">>> Master Timeout!!");
+        } 
+    }
+    else if (!strcmp(topic, (hostname + "/cell_discharge").c_str()))
     {
         String cell_discharge = "";
         for (unsigned int i = 0; i < length; i++)
@@ -134,7 +157,7 @@ void setup()
     connectWifi();
     randomSeed(micros());
 
-    LTC.initSPI(D7, D6, D5); //Initialize LTC6804 hardware
+   //LTC.initSPI(D7, D6, D5); //Initialize LTC6804 hardware
 
     for (int i = 0; i < 12; i++)
     {
@@ -146,6 +169,7 @@ void setup()
 // the loop function runs over and over again forever
 void loop()
 {
+    /*
     if (LTC.checkSPI(false)) // true
     {
         digitalWrite(D1, HIGH);
@@ -159,6 +183,8 @@ void loop()
         Serial.println("SPI lost");
     }
 
+    */
+    /*
     LTC.cfgSetVUV(3.1);
     LTC.cfgSetVOV(3.9);
 
@@ -209,6 +235,7 @@ void loop()
     // LTC.readStatusDbg();
     // LTC.readCellsDbg();
 
+    */
     // Serial.print("Sum of all Cells Voltage: ");
     // Serial.println(LTC.getStatusVoltage(LTC68041::CHST_SOC));
 
@@ -218,7 +245,8 @@ void loop()
     }
     client.loop();
 
-    client.publish((hostname + "/alive_counter_slave").c_str(), String(alive_counter_slave).c_str(), true);
+    uptime_millis_slave = millis();
+    client.publish((hostname + "/uptime_slave").c_str(), String(uptime_millis_slave).c_str(), true);
     String pub_cell_voltage = String("");
     float cell_voltage_sum = 0.0;
     float cell_voltage_min = 5000.0;
@@ -237,6 +265,4 @@ void loop()
     client.publish((hostname + "/cell_voltage_diff").c_str(), String(cell_voltage_max - cell_voltage_min).c_str(), true);
 
     delay(1000);
-
-    alive_counter_slave++;
 }
