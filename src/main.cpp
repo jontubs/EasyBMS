@@ -258,8 +258,7 @@ void loop()
     }
     client.publish((hostname + "/cell_voltages").c_str(), pub_cell_voltage.c_str(), true);
     client.publish((hostname + "/module_voltage").c_str(), String(cell_voltage_sum).c_str(), true);
-    client.publish((hostname + "/module_temp1").c_str(), String(33.0).c_str(), true);
-    client.publish((hostname + "/module_temp2").c_str(), String(33.3).c_str(), true);
+    client.publish((hostname + "/module_temps").c_str(), (String(33.0) + "," + String(33.3)).c_str(), true);
     client.publish((hostname + "/chip_temp").c_str(), String(44.4).c_str(), true);
 
     delay(1000);
