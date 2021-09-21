@@ -255,14 +255,12 @@ void loop()
     {
         pub_cell_voltage += String(s) + ",";
         cell_voltage_sum += s;
-        if (s < cell_voltage_min)
-            cell_voltage_min = s;
-        if (s > cell_voltage_max)
-            cell_voltage_max = s;
     }
-    client.publish((hostname + "/cell_voltage").c_str(), pub_cell_voltage.c_str(), true);
+    client.publish((hostname + "/cell_voltages").c_str(), pub_cell_voltage.c_str(), true);
     client.publish((hostname + "/module_voltage").c_str(), String(cell_voltage_sum).c_str(), true);
-    client.publish((hostname + "/cell_voltage_diff").c_str(), String(cell_voltage_max - cell_voltage_min).c_str(), true);
+    client.publish((hostname + "/module_temp1").c_str(), String(33.0).c_str(), true);
+    client.publish((hostname + "/module_temp2").c_str(), String(33.3).c_str(), true);
+    client.publish((hostname + "/chip_temp").c_str(), String(44.4).c_str(), true);
 
     delay(1000);
 }
