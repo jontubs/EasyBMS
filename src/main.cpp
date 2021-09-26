@@ -9,20 +9,16 @@
 int error = 0;
 static LTC68041 LTC = LTC68041(D8);
 
-static unsigned long timer;
-static unsigned long diff = 1000;
-static bool flip = true;
-
 static const long master_timeout = 5000;
 
-unsigned int module_index = 1;
-String hostname = String("esp-module") + module_index;
+unsigned int module_index = 3;
+String hostname = String("esp-module/") + module_index;
 
 WiFiClient espClient;
 PubSubClient client(mqtt_server, 1883, espClient);
 
-unsigned long uptime_millis_slave = millis();
-std::array<float, 12> cell_voltage;
+unsigned long uptime_millis;
+// std::array<float, 12> cell_voltage;
 
 // connect to wifi
 void connectWifi()
@@ -30,6 +26,8 @@ void connectWifi()
     Serial.println();
     Serial.print("connecting to ");
     Serial.println(ssid);
+    WiFi.persistent(false);
+    WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_STA);
     WiFi.hostname(hostname);
     WiFi.begin(ssid, password);
@@ -56,7 +54,7 @@ void reconnect()
     {
         Serial.print("Attempting MQTT connection...");
         // Attempt to connect
-        if (client.connect(hostname.c_str(), NULL, NULL, (hostname + "/available").c_str(), 0, true, "offline"))
+        if (client.connect(WiFi.macAddress().c_str(), mqtt_username, mqtt_password, (hostname + "/available").c_str(), 0, true, "offline"))
         {
             Serial.println("connected");
             // Once connected, publish an announcement...
@@ -99,7 +97,8 @@ void callback(char *topic, byte *payload, unsigned int length)
 
         long uptime_long = uptime.toInt();
 
-        if(uptime_long - last_master_uptime > master_timeout) {
+        if (uptime_long - last_master_uptime > master_timeout)
+        {
             Serial.println(">>> Master Timeout!!");
         }
     }
@@ -157,12 +156,12 @@ void setup()
     connectWifi();
     randomSeed(micros());
 
-   LTC.initSPI(D7, D6, D5); //Initialize LTC6804 hardware
+    LTC.initSPI(D7, D6, D5); //Initialize LTC6804 hardware
 
-    for (int i = 0; i < 12; i++)
-    {
-        cell_voltage.at(i) = 2.8 + (0.1 * i);
-    }
+    // for (int i = 0; i < 12; i++)
+    // {
+    //     cell_voltage.at(i) = 2.8 + (0.1 * i);
+    // }
     client.setCallback(callback);
 }
 
@@ -185,41 +184,28 @@ void loop()
     LTC.cfgSetVUV(3.1);
     LTC.cfgSetVOV(4.2);
 
-    //Local Variables
-    if((timer + diff) < millis())
-    {
-        timer=millis();
-        flip= !flip;
-    }
+    // digitalWrite(D2, HIGH);
+    // LTC.cfgSetDCC(std::bitset<12>{0b000000000000});  //alternative bitset.reset()
 
-    if (flip)
-    {
-
-        digitalWrite(D2, HIGH);
-        LTC.cfgSetDCC(std::bitset<12>{0b000000000000});  //alternative bitset.reset()
-    }
-    else
-    {
-        //einfach ein bisschen die discharge pins flippen um zu gucken obs geht
-        digitalWrite(D2, LOW);
-        LTC.cfgSetDCC(std::bitset<12>{0b111111111111});  //alternative bitset.set()
-    }
+    // //einfach ein bisschen die discharge pins flippen um zu gucken obs geht
+    // digitalWrite(D2, LOW);
+    // LTC.cfgSetDCC(std::bitset<12>{0b111111111111});  //alternative bitset.set()
 
     LTC.cfgWrite();
     //Start different Analog-Digital-Conversions in the Chip
 
     LTC.startCellConv(LTC68041::DCP_DISABLED);
-    delay(5);   //Wait until conversion is finished
+    delay(5); //Wait until conversion is finished
     LTC.startAuxConv();
-    delay(5);   //Wait until conversion is finished
+    delay(5); //Wait until conversion is finished
     LTC.startStatusConv();
-    delay(5);   //Wait until conversion is finished
+    delay(5); //Wait until conversion is finished
 
     //Read the raw values into the controller
     std::array<float, 6> voltages;
-    LTC.getCellVoltages(voltages, LTC68041::CH_ALL);  // read all channel (2nd parameter default), use only 6 (size of array)
-    LTC.getAuxVoltage(LTC68041::CHG_ALL);        // nothing is read, just for documenation of usage
-    LTC.getStatusVoltage(LTC68041::CHST_ALL);    // nothing is read, just for documenation of usage
+    LTC.getCellVoltages(voltages, LTC68041::CH_ALL); // read all channel (2nd parameter default), use only 6 (size of array)
+    LTC.getAuxVoltage(LTC68041::CHG_ALL);            // nothing is read, just for documenation of usage
+    LTC.getStatusVoltage(LTC68041::CHST_ALL);        // nothing is read, just for documenation of usage
     LTC.cfgRead();
 
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
@@ -228,6 +214,12 @@ void loop()
     LTC.readAuxDbg();
     LTC.readCellsDbg();
 
+    std::array<float, 12> cell_voltages;
+    LTC.getCellVoltages(cell_voltages);
+    float chip_temp = LTC.getStatusVoltage(LTC.StatusGroup::CHST_ITMP);
+
+    float module_voltage = LTC.getStatusVoltage(LTC68041::CHST_SOC);
+
     delay(500);
     if (!client.connected())
     {
@@ -235,21 +227,16 @@ void loop()
     }
     client.loop();
 
-    uptime_millis_slave = millis();
-    client.publish((hostname + "/uptime_slave").c_str(), String(uptime_millis_slave).c_str(), true);
-    String pub_cell_voltage = String("");
-    float cell_voltage_sum = 0.0;
-    float cell_voltage_min = 5000.0;
-    float cell_voltage_max = -5000.0;
-    for (const auto &s : cell_voltage)
+    uptime_millis = millis();
+    client.publish((hostname + "/uptime").c_str(), String(uptime_millis).c_str(), true);
+
+    for (size_t i = 0; i < cell_voltages.size(); i++)
     {
-        pub_cell_voltage += String(s) + ",";
-        cell_voltage_sum += s;
+        client.publish((hostname + "/cell/" + String(i + 1) + "/voltage").c_str(), String(cell_voltages[i]).c_str(), true);
     }
-    client.publish((hostname + "/cell_voltages").c_str(), pub_cell_voltage.c_str(), true);
-    client.publish((hostname + "/module_voltage").c_str(), String(cell_voltage_sum).c_str(), true);
-    client.publish((hostname + "/module_temps").c_str(), (String(33.0) + "," + String(33.3)).c_str(), true);
-    client.publish((hostname + "/chip_temp").c_str(), String(44.4).c_str(), true);
+    client.publish((hostname + "/module_voltage").c_str(), String(module_voltage).c_str(), true);
+    client.publish((hostname + "/module_temps").c_str(), (String(25.0) + "," + String(25.1)).c_str(), true);
+    client.publish((hostname + "/chip_temp").c_str(), String(chip_temp).c_str(), true);
 
     delay(1000);
 }
