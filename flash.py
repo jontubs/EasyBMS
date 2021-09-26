@@ -13,11 +13,11 @@ if os.path.isfile('current_flash.txt'):
     with open('current_flash.txt') as file:
         current_flash = int(file.readline())
 
-for i, port in enumerate(sorted(ports)):
-    port_int[i] = port.device
-    print(i, port.device)
-if current_flash not in port_int:
-    current_flash = 0
+# for i, port in enumerate(sorted(ports)):
+#     port_int[i] = port.device
+#     print(i, port.device)
+# if current_flash not in port_int:
+#     current_flash = 0
 
 new_file = ""
 
@@ -36,4 +36,4 @@ with open('current_flash.txt', 'w+') as file:
 # for port, desc, hwid in sorted(ports):
 #     print("{}: {} [{}]".format(port, desc, hwid))
 
-env['UPLOAD_PORT'] = port_int[current_flash]
+# env['UPLOAD_PORT'] = port_int[current_flash]
