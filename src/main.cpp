@@ -57,7 +57,7 @@ void reconnect() {
             // ... and resubscribe
             client.subscribe("master/uptime");
             for (int i = 0; i < 12; ++i) {
-                client.subscribe((module_topic + "/cell/" + i + "/balance/set").c_str());
+                client.subscribe((module_topic + "/cell/" + (i + 1) + "/balance/set").c_str());
             }
         } else {
             Serial.print("failed, rc=");
