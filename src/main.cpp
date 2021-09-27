@@ -55,10 +55,10 @@ void reconnect() {
             // Once connected, publish an announcement...
             client.publish((module_topic + "/available").c_str(), "online", true);
             // ... and resubscribe
-            client.subscribe((module_topic + "/cell_discharge").c_str());
-            client.subscribe(String("master/uptime").c_str());
-            client.subscribe((module_topic + "/cell_overvoltage_limit").c_str());
-            client.subscribe((module_topic + "/cell_undervoltage_limit").c_str());
+            client.subscribe("master/uptime");
+            for (int i = 0; i < 12; ++i) {
+                client.subscribe((module_topic + "/cell/" + i + "/balance/set").c_str());
+            }
         } else {
             Serial.print("failed, rc=");
             Serial.print(client.state());
@@ -101,7 +101,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
             String get_cell = topic_string.substring((module_topic + "/cell/").length());
             get_cell = get_cell.substring(0, get_cell.indexOf("/"));
             long cell_number = get_cell.toInt();
-            if (topic_string.equals(module_topic + "/cell/" + cell_number + +"/balance/set")) {
+            if (topic_string.equals(module_topic + "/cell/" + cell_number + "/balance/set")) {
                 long balance_time = payload_to_string(payload, length).toInt();
                 cells_to_balance.at(cell_number - 1) = millis() + balance_time;
             }
