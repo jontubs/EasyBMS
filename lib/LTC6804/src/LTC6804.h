@@ -489,7 +489,7 @@ private:
     template<std::size_t N>
     constexpr void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regGroup, std::array<float, N> &data);
 
-    constexpr float parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, const RegNames index);
+    static constexpr float parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, RegNames index);
 
     constexpr std::uint16_t calcPEC15(const std::uint16_t data) const;
 

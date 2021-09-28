@@ -407,7 +407,7 @@ Reads and parses the LTC6804 cell voltage registers.
 template<std::size_t N>
 bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel ch)
 {
-    std::array<float, CELLNUM> cellVoltage;	//Cell voltage on volt
+    std::array<float, CELLNUM> cellVoltage{};	//Cell voltage on volt
 
     switch(ch)
     {
@@ -471,7 +471,7 @@ constexpr inline void LTC68041::parseVoltages(const unsigned int group, const st
 
 constexpr inline float LTC68041::parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, const RegNames index)
 {
-    return static_cast<float>(regGroup[index] | (static_cast<unsigned int>(regGroup[index + 1]) << 8)) * 100E-6;
+    return static_cast<float>(regGroup[index] | (static_cast<unsigned int>(regGroup[index + 1]) << 8u)) * 100E-6f;
 }
 
 /*!*******************************************************************************************************
@@ -640,12 +640,12 @@ float LTC68041::getStatusVoltage(const StatusGroup chst)
             if(!spi_read_cmd(RDSTATA, regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Sum of all cell voltages Sum of all cell voltages = SOC * 100µV * 20
-            return parseVoltage(regs.STAR, STAR0) * 20.0;
+            return parseVoltage(regs.STAR, STAR0) * 20.0f;
         case StatusGroup::CHST_ITMP:
             if(!spi_read_cmd(RDSTATA, regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP * 100µV / 7.5mV/°C - 273°C
-            return (parseVoltage(regs.STAR, STAR2) / 7.5E-3 - 273.0 ) + offsetTemp;
+            return (parseVoltage(regs.STAR, STAR2) / 7.5E-3f - 273.0f ) + offsetTemp;
         case StatusGroup::CHST_VA:
             if(!spi_read_cmd(RDSTATA, regs.STAR))
                 return NAN;
