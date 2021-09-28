@@ -101,7 +101,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
             String get_cell = topic_string.substring((module_topic + "/cell/").length());
             get_cell = get_cell.substring(0, get_cell.indexOf("/"));
             long cell_number = get_cell.toInt();
-            if (topic_string.equals(module_topic + "/cell/" + cell_number + "/balance/set")) {
+            if (topic_string.equals(module_topic + "/cell/" + cell_number + "/balance_request")) {
                 long balance_time = payload_to_string(payload, length).toInt();
                 cells_to_balance.at(cell_number - 1) = millis() + balance_time;
             }
@@ -198,9 +198,9 @@ void loop() {
         client.publish((module_topic + "/cell/" + String(i + 1) + "/voltage").c_str(), String(cell_voltages[i]).c_str(),
                        true);
         if (balance_bits.test(i)) {
-            client.publish((module_topic + "/cell/" + String(i + 1) + "/balance").c_str(), "balancing", true);
+            client.publish((module_topic + "/cell/" + String(i + 1) + "/is_balancing").c_str(), "1", true);
         } else {
-            client.publish((module_topic + "/cell/" + String(i + 1) + "/balance").c_str(), "stop", true);
+            client.publish((module_topic + "/cell/" + String(i + 1) + "/is_balancing").c_str(), "0", true);
         }
     }
     client.publish((module_topic + "/module_voltage").c_str(), String(module_voltage).c_str(), true);
