@@ -171,8 +171,6 @@ void loop() {
     std::array<float, 6> voltages{};
     LTC.getCellVoltages(voltages,
                         LTC68041::CH_ALL); // read all channel (2nd parameter default), use only 6 (size of array)
-    LTC.getAuxVoltage(LTC68041::CHG_ALL);            // nothing is read, just for documenation of usage
-    LTC.getStatusVoltage(LTC68041::CHST_ALL);        // nothing is read, just for documenation of usage
     LTC.cfgRead();
 
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
