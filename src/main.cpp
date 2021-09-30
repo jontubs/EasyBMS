@@ -6,11 +6,23 @@
 
 #include "credentials.h"
 
+#define DEBUG
+
+#ifdef DEBUG
+#define DEBUG_BEGIN(...) Serial.begin( __VA_ARGS__ )
+#define DEBUG_PRINT(...) Serial.print( __VA_ARGS__ )
+#define DEBUG_PRINTLN(...) Serial.println( __VA_ARGS__ )
+#else
+#define DEBUG_BEGIN(...)
+#define DEBUG_PRINT(...)
+#define DEBUG_PRINTLN(...)
+#endif
+
 static LTC68041 LTC = LTC68041(D8);
 
-static const long master_timeout = 5000;
+static const long MASTER_TIMEOUT = 5000;
 
-unsigned int module_index = 24;
+unsigned int module_index = 9;
 String hostname = String("esp-module-") + module_index;
 String module_topic = String("esp-module/") + module_index;
 
@@ -19,11 +31,13 @@ PubSubClient client(mqtt_server, 1883, espClient);
 
 std::array<unsigned long, 12> cells_to_balance{};
 
+unsigned long last_connection = 0;
+
 // connect to wifi
 void connectWifi() {
-    Serial.println();
-    Serial.print("connecting to ");
-    Serial.println(ssid);
+    DEBUG_PRINTLN();
+    DEBUG_PRINT("connecting to ");
+    DEBUG_PRINTLN(ssid);
     ESP8266WiFiClass::persistent(false);
     WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_STA);
@@ -31,27 +45,27 @@ void connectWifi() {
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
-        Serial.print(".");
+        DEBUG_PRINT(".");
     }
-    Serial.println("");
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
+    DEBUG_PRINTLN("");
+    DEBUG_PRINTLN("WiFi connected");
+    DEBUG_PRINTLN("IP address: ");
+    DEBUG_PRINTLN(WiFi.localIP());
 
-    Serial.print("DNS1: ");
-    Serial.println(IPAddress(dns_getserver(0)));
-    Serial.print("DNS2: ");
-    Serial.println(IPAddress(dns_getserver(1)));
+    DEBUG_PRINT("DNS1: ");
+    DEBUG_PRINTLN(IPAddress(dns_getserver(0)));
+    DEBUG_PRINT("DNS2: ");
+    DEBUG_PRINTLN(IPAddress(dns_getserver(1)));
 }
 
 void reconnect() {
     // Loop until we're reconnected
     while (!client.connected()) {
-        Serial.print("Attempting MQTT connection...");
+        DEBUG_PRINT("Attempting MQTT connection...");
         // Attempt to connect
         if (client.connect(hostname.c_str(), mqtt_username, mqtt_password, (module_topic + "/available").c_str(), 0,
                            true, "offline")) {
-            Serial.println("connected");
+            DEBUG_PRINTLN("connected");
             // Once connected, publish an announcement...
             client.publish((module_topic + "/available").c_str(), "online", true);
             // ... and resubscribe
@@ -60,12 +74,15 @@ void reconnect() {
                 client.subscribe((module_topic + "/cell/" + (i + 1) + "/balance/set").c_str());
             }
         } else {
-            Serial.print("failed, rc=");
-            Serial.print(client.state());
-            //   Serial.println(" try again in 5 seconds");
+            DEBUG_PRINT("failed, rc=");
+            DEBUG_PRINT(client.state());
+            //   DEBUG_PRINTLN(" try again in 5 seconds");
             // Wait 5 seconds before retrying
             // delay(5000);
-            return;
+            if (last_connection + 30000 < millis()) {
+                ESP.restart();
+            }
+            delay(1000);
         }
     }
 }
@@ -84,8 +101,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
     String topic_string = String(topic);
     if (topic_string.equals("master/uptime")) {
         String uptime = payload_to_string(payload, length);
-        Serial.print("Got heartbeat from master: ");
-        Serial.println(uptime);
+        DEBUG_PRINT("Got heartbeat from master: ");
+        DEBUG_PRINTLN(uptime);
 
         digitalWrite(LED_BUILTIN, LOW);
         delay(50);
@@ -93,8 +110,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
         long uptime_long = uptime.toInt();
 
-        if (uptime_long - last_master_uptime > master_timeout) {
-            Serial.println(">>> Master Timeout!!");
+        if (uptime_long - last_master_uptime > MASTER_TIMEOUT) {
+            DEBUG_PRINTLN(">>> Master Timeout!!");
         }
     } else if (topic_string.startsWith(module_topic)) {
         if (topic_string.startsWith(module_topic + "/cell/")) {
@@ -116,8 +133,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
     pinMode(D5, OUTPUT);
     pinMode(D1, OUTPUT);
 
-    Serial.begin(74880);
-    Serial.println("Init");
+    DEBUG_BEGIN(74880);
+    DEBUG_PRINTLN("Init");
 
     connectWifi();
     randomSeed(micros());
@@ -133,12 +150,12 @@ void loop() {
 
     if (LTC.checkSPI(true)) {
         digitalWrite(D1, HIGH);
-        Serial.println();
-        Serial.println("SPI ok");
+        DEBUG_PRINTLN();
+        DEBUG_PRINTLN("SPI ok");
     } else {
         digitalWrite(D1, LOW);
-        Serial.println();
-        Serial.println("SPI lost");
+        DEBUG_PRINTLN();
+        DEBUG_PRINTLN("SPI lost");
     }
 
     LTC.cfgSetVUV(3.1);
@@ -189,6 +206,8 @@ void loop() {
         reconnect();
     }
     client.loop();
+
+    last_connection = uptime_millis;
 
     client.publish((module_topic + "/uptime").c_str(), String(uptime_millis).c_str(), true);
 
