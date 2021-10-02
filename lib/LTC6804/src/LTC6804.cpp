@@ -29,6 +29,11 @@ LTC68041::LTC68041(byte pCS, float tempOffset)
     regs.CFGR[CFGR0] = 0xFE;
 }
 
+void LTC68041::set_cfgr0()
+{
+    regs.CFGR[CFGR0] = 0xFE;
+}
+
 /**
  * @brief Initializes the SPI instance used for communication
  * 

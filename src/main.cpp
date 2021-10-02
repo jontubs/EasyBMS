@@ -22,7 +22,7 @@ static LTC68041 LTC = LTC68041(D8);
 
 static const long MASTER_TIMEOUT = 5000;
 
-unsigned int module_index = 9;
+unsigned int module_index = 4;
 String hostname = String("esp-module-") + module_index;
 String module_topic = String("esp-module/") + module_index;
 
@@ -32,7 +32,8 @@ PubSubClient client(mqtt_server, 1883, espClient);
 std::array<unsigned long, 12> cells_to_balance{};
 
 unsigned long last_connection = 0;
-//bool is_total_voltage_measurer = false
+bool is_total_voltage_measurer = false;
+bool is_total_current_measurer = true;
 
 // connect to wifi
 void connectWifi() {
@@ -146,6 +147,10 @@ void callback(char *topic, byte *payload, unsigned int length) {
     client.setCallback(callback);
 }
 
+float raw_voltage_to_real_module_temp(float raw_voltage) {
+    return 32.0513f * raw_voltage - 23.0769f;
+}
+
 // the loop function runs over and over again forever
 void loop() {
     unsigned long uptime_millis = millis();
@@ -176,6 +181,8 @@ void loop() {
     }
     LTC.cfgSetDCC(balance_bits);
 
+    LTC.set_cfgr0(); //debug, TODO to fix
+
     LTC.cfgWrite();
     //Start different Analog-Digital-Conversions in the Chip
 
@@ -204,6 +211,11 @@ void loop() {
 
     float module_voltage = LTC.getStatusVoltage(LTC68041::CHST_SOC);
 
+    float raw_voltage_module_temp_1 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO1);
+    float raw_voltage_module_temp_2 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO2);
+    float module_temp_1 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_1);
+    float module_temp_2 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_2);
+
     if (!client.connected()) {
         reconnect();
     }
@@ -223,8 +235,25 @@ void loop() {
         }
     }
     client.publish((module_topic + "/module_voltage").c_str(), String(module_voltage).c_str(), true);
-    client.publish((module_topic + "/module_temps").c_str(), (String(25.0) + "," + String(25.1)).c_str(), true);
+    client.publish((module_topic + "/module_temps").c_str(),
+                   (String(module_temp_1) + "," + String(module_temp_2)).c_str(), true);
     client.publish((module_topic + "/chip_temp").c_str(), String(chip_temp).c_str(), true);
+
+    if (is_total_voltage_measurer) {
+        float raw_voltage = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO3);
+        const float multiplier_hv = 201.0f;
+        float total_system_voltage = raw_voltage * multiplier_hv;
+        client.publish((module_topic + "/total_system_voltage").c_str(), String(total_system_voltage).c_str(), true);
+    }
+
+    if (is_total_current_measurer) {
+        float raw_voltage = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO3);
+        raw_voltage -= 2.5f; // offset
+        const float multiplier_current = 24.0f; // 20 ideal
+        const float correction_offset = 0.0f;
+        float total_system_current = raw_voltage * multiplier_current;
+        client.publish((module_topic + "/total_system_current").c_str(), String(total_system_current).c_str(), true);
+    }
 
     delay(1000);
 }

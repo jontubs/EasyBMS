@@ -229,6 +229,7 @@ public:
     void readStatusDbg();
     void readAuxDbg();
     void readCellsDbg();
+    void set_cfgr0();
 
     template<std::size_t N>
     bool getCellVoltages(std::array<float, N> &voltages, const CellChannel ch = CH_ALL);
