@@ -32,6 +32,7 @@ PubSubClient client(mqtt_server, 1883, espClient);
 std::array<unsigned long, 12> cells_to_balance{};
 
 unsigned long last_connection = 0;
+//bool is_total_voltage_measurer = false
 
 // connect to wifi
 void connectWifi() {
@@ -79,7 +80,7 @@ void reconnect() {
             //   DEBUG_PRINTLN(" try again in 5 seconds");
             // Wait 5 seconds before retrying
             // delay(5000);
-            if (last_connection + 30000 < millis()) {
+            if (last_connection != 0 && last_connection + 30000 < millis()) {
                 ESP.restart();
             }
             delay(1000);
@@ -134,7 +135,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
     pinMode(D1, OUTPUT);
 
     DEBUG_BEGIN(74880);
-    DEBUG_PRINTLN("Init");
+    DEBUG_PRINT(hostname);
+    DEBUG_PRINTLN(" init");
 
     connectWifi();
     randomSeed(micros());
