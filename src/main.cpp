@@ -22,7 +22,7 @@ static LTC68041 LTC = LTC68041(D8);
 
 static const long MASTER_TIMEOUT = 5000;
 
-unsigned int module_index = 4;
+unsigned int module_index = 1;
 String hostname = String("esp-module-") + module_index;
 String module_topic = String("esp-module/") + module_index;
 
@@ -32,8 +32,8 @@ PubSubClient client(mqtt_server, 1883, espClient);
 std::array<unsigned long, 12> cells_to_balance{};
 
 unsigned long last_connection = 0;
-bool is_total_voltage_measurer = false;
-bool is_total_current_measurer = true;
+bool is_total_voltage_measurer = true;
+bool is_total_current_measurer = false;
 
 // connect to wifi
 void connectWifi() {
@@ -73,7 +73,7 @@ void reconnect() {
             // ... and resubscribe
             client.subscribe("master/uptime");
             for (int i = 0; i < 12; ++i) {
-                client.subscribe((module_topic + "/cell/" + (i + 1) + "/balance/set").c_str());
+                client.subscribe((module_topic + "/cell/" + (i + 1) + "/balance_request").c_str());
             }
         } else {
             DEBUG_PRINT("failed, rc=");
@@ -82,7 +82,7 @@ void reconnect() {
             // Wait 5 seconds before retrying
             // delay(5000);
             if (last_connection != 0 && last_connection + 30000 < millis()) {
-                ESP.restart();
+                EspClass::restart();
             }
             delay(1000);
         }
@@ -113,8 +113,11 @@ void callback(char *topic, byte *payload, unsigned int length) {
         long uptime_long = uptime.toInt();
 
         if (uptime_long - last_master_uptime > MASTER_TIMEOUT) {
+            DEBUG_PRINTLN(uptime_long);
+            DEBUG_PRINTLN(last_master_uptime);
             DEBUG_PRINTLN(">>> Master Timeout!!");
         }
+        last_master_uptime = uptime_long;
     } else if (topic_string.startsWith(module_topic)) {
         if (topic_string.startsWith(module_topic + "/cell/")) {
             String get_cell = topic_string.substring((module_topic + "/cell/").length());
@@ -219,7 +222,9 @@ void loop() {
     if (!client.connected()) {
         reconnect();
     }
-    client.loop();
+    for (int i = 0; i < 5; ++i) {
+        client.loop();
+    }
 
     last_connection = uptime_millis;
 
@@ -228,6 +233,8 @@ void loop() {
     for (size_t i = 0; i < cell_voltages.size(); i++) {
         client.publish((module_topic + "/cell/" + String(i + 1) + "/voltage").c_str(), String(cell_voltages[i]).c_str(),
                        true);
+//        client.publish((module_topic + "/cell/" + String(i + 1) + "/balance_time").c_str(),
+//                       String(cells_to_balance[i]).c_str(), true);
         if (balance_bits.test(i)) {
             client.publish((module_topic + "/cell/" + String(i + 1) + "/is_balancing").c_str(), "1", true);
         } else {
