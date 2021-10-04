@@ -1,6 +1,5 @@
 #include <ESP8266WiFi.h>
 #include <LTC6804.h>
-#include <LTC6804.cpp>
 #include <lwip/dns.h>
 #include <PubSubClient.h>
 
@@ -124,8 +123,9 @@ void callback(char *topic, byte *payload, unsigned int length) {
             get_cell = get_cell.substring(0, get_cell.indexOf("/"));
             long cell_number = get_cell.toInt();
             if (topic_string.equals(module_topic + "/cell/" + cell_number + "/balance_request")) {
-                long balance_time = payload_to_string(payload, length).toInt();
-                cells_to_balance.at(cell_number - 1) = millis() + balance_time;
+                unsigned long balance_time = std::stoul(payload_to_string(payload, length).c_str());
+                balance_time += millis();
+                cells_to_balance.at(cell_number - 1) = balance_time;
             }
         }
     }
@@ -157,6 +157,13 @@ float raw_voltage_to_real_module_temp(float raw_voltage) {
 // the loop function runs over and over again forever
 void loop() {
     unsigned long uptime_millis = millis();
+
+    if (uptime_millis < last_connection) { // time overflow
+        for (auto &cell_to_balance : cells_to_balance) {
+            cell_to_balance = 0;
+        }
+        last_connection = 0;
+    }
 
     if (LTC.checkSPI(true)) {
         digitalWrite(D1, HIGH);
@@ -257,9 +264,10 @@ void loop() {
         float raw_voltage = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO3);
         raw_voltage -= 2.5f; // offset
         const float multiplier_current = 24.0f; // 20 ideal
-        const float correction_offset = 0.0f;
+//        const float correction_offset = 0.0f;
         float total_system_current = raw_voltage * multiplier_current;
-        client.publish((module_topic + "/total_system_current").c_str(), String(total_system_current).c_str(), true);
+        client.publish((module_topic + "/total_system_current").c_str(),
+                       (String(millis()) + "," + String(total_system_current)).c_str(), true);
     }
 
     delay(1000);
