@@ -238,8 +238,8 @@ void loop() {
     client.publish((module_topic + "/uptime").c_str(), String(uptime_millis).c_str(), true);
 
     for (size_t i = 0; i < cell_voltages.size(); i++) {
-        client.publish((module_topic + "/cell/" + String(i + 1) + "/voltage").c_str(), String(cell_voltages[i]).c_str(),
-                       true);
+        client.publish((module_topic + "/cell/" + String(i + 1) + "/voltage").c_str(),
+                       String(cell_voltages[i], 3).c_str(), true);
 //        client.publish((module_topic + "/cell/" + String(i + 1) + "/balance_time").c_str(),
 //                       String(cells_to_balance[i]).c_str(), true);
         if (balance_bits.test(i)) {
