@@ -243,7 +243,11 @@ void set_LTC(std::bitset<12> &balance_bits) {
     /*
      * check LTC SPI
      */
-    if (LTC.checkSPI(false)) {
+#ifdef DEBUG
+    if (LTC.checkSPI(true)) {
+#else
+        if (LTC.checkSPI(false)) {
+#endif
         digitalWrite(D1, HIGH);
 //        DEBUG_PRINTLN();
 //        DEBUG_PRINTLN("SPI ok");
@@ -285,10 +289,12 @@ void set_LTC(std::bitset<12> &balance_bits) {
     LTC.cfgRead();
 
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
-//    LTC.readCfgDbg();
-//    LTC.readStatusDbg();
-//    LTC.readAuxDbg();
-//    LTC.readCellsDbg();
+#ifdef DEBUG
+    LTC.readCfgDbg();
+    LTC.readStatusDbg();
+    LTC.readAuxDbg();
+    LTC.readCellsDbg();
+#endif
 }
 
 // the loop function runs over and over again forever
