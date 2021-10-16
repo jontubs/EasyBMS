@@ -81,9 +81,7 @@ void reconnect() {
                 client.subscribe((module_topic + "/cell/" + (i + 1) + "/balance_request").c_str());
             }
             client.subscribe((mac_topic + "/blink").c_str());
-            client.subscribe((mac_topic + "/set_module_id").c_str());
-            client.subscribe((mac_topic + "/set_total_voltage_measurer").c_str());
-            client.subscribe((mac_topic + "/set_total_current_measurer").c_str());
+            client.subscribe((mac_topic + "/set_config").c_str());
             client.subscribe((mac_topic + "/restart").c_str());
         } else {
             DEBUG_PRINT("failed, rc=");
@@ -144,14 +142,16 @@ void callback(char *topic, byte *payload, unsigned int length) {
             digitalWrite(LED_BUILTIN, LOW);
             delay(50);
         }
-    } else if (topic_string.equals(mac_topic + "/set_module_id")) {
-        module_topic = String("esp-module/") + payload_to_string(payload, length).toInt();
+    } else if (topic_string.equals(mac_topic + "/set_config")) {
+        String config = payload_to_string(payload, length);
+        String module_number_string = config.substring(0, config.indexOf(","));
+        String total_voltage_measurer_string = config.substring(config.indexOf(",") + 1, config.lastIndexOf(","));
+        String total_current_measurer_string = config.substring(config.lastIndexOf(",") + 1);
+        module_topic = String("esp-module/") + module_number_string;
+        is_total_voltage_measurer = total_voltage_measurer_string.equals("1");
+        is_total_current_measurer = total_current_measurer_string.equals("1");
         client.disconnect();
         reconnect();
-    } else if (topic_string.equals(mac_topic + "/set_total_voltage_measurer")) {
-        is_total_voltage_measurer = payload_to_string(payload, length).equals("1");
-    } else if (topic_string.equals(mac_topic + "/set_total_current_measurer")) {
-        is_total_current_measurer = payload_to_string(payload, length).equals("1");
     } else if (topic_string.equals(mac_topic + "/restart")) {
         if (payload_to_string(payload, length).equals("1")) {
             EspClass::restart();
