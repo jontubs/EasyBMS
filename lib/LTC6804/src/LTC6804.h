@@ -229,7 +229,6 @@ public:
     void readStatusDbg();
     void readAuxDbg();
     void readCellsDbg();
-    void set_cfgr0();
 
     template<std::size_t N>
     bool getCellVoltages(std::array<float, N> &voltages, const CellChannel ch = CH_ALL);
@@ -442,6 +441,8 @@ private:
      * @brief Register map of internal register groups
      */
     struct Registers {
+        std::uint8_t CFGR0w;                        // Register value of CFGR0 on next write
+        std::uint8_t CFGR0r;                        // Register value of CFGR0 on last read
         std::array<std::uint8_t, SIZEREG> CFGR;     // Configuration Register Group
         std::array<std::uint8_t, SIZEREG> CVAR;	    // Cell Voltage Register Group A
         std::array<std::uint8_t, SIZEREG> CVBR;	    // Cell Voltage Register Group B
