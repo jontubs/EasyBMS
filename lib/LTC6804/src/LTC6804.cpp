@@ -26,12 +26,7 @@ LTC68041::LTC68041(byte pCS, float tempOffset)
 {
     Serial.print("Objekt angelegt");
 
-    regs.CFGR[CFGR0] = 0xFE;
-}
-
-void LTC68041::set_cfgr0()
-{
-    regs.CFGR[CFGR0] = 0xFE;
+    regs.CFGR0w = 0xFE;
 }
 
 /**
@@ -222,7 +217,7 @@ void LTC68041::cfgSetDischargeTimeout(DischargeTimeout timeout)
 
 /**
  * @brief Set ADC filter Mode out of the six possible modes.
- *        Handles setting of MD bitsin command and ADCOPT bit in CFGR0
+ *        Handles setting of MD bits in command and ADCOPT bit in CFGR0w
  * 
  * @param mode ADC mode as enum value of type ADCFilterMode
  */
@@ -232,27 +227,27 @@ void LTC68041::cfgSetADCMode(ADCFilterMode mode)
     {
         case ADCFilterMode::BANDWIDTH_27KHZ:
             md = MD_FAST;
-            regs.CFGR[CFGR0] &= ~(1 << CFGR0_ADCOPT_Pos);
+            regs.CFGR0w &= ~(1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_7KHZ:
             md = MD_NORMAL;
-            regs.CFGR[CFGR0] &= ~(1 << CFGR0_ADCOPT_Pos);
+            regs.CFGR0w &= ~(1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_26HZ:
             md = MD_FILTERED;
-            regs.CFGR[CFGR0] &= ~(1 << CFGR0_ADCOPT_Pos);
+            regs.CFGR0w &= ~(1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_14KHZ:
             md = MD_FAST;
-            regs.CFGR[CFGR0] = (regs.CFGR[CFGR0] & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos);
+            regs.CFGR0w = (regs.CFGR0w & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_3KHZ:
             md = MD_NORMAL;
-            regs.CFGR[CFGR0] = (regs.CFGR[CFGR0] & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos);
+            regs.CFGR0w = (regs.CFGR0w & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos);
             break;
         case ADCFilterMode::BANDWIDTH_2KHZ:
             md = MD_FILTERED;
-            regs.CFGR[CFGR0] = (regs.CFGR[CFGR0] & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos);
+            regs.CFGR0w = (regs.CFGR0w & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos);
             break;
         default:
             break;
@@ -261,17 +256,17 @@ void LTC68041::cfgSetADCMode(ADCFilterMode mode)
 
 void LTC68041::cfgSetRefOn(const bool value)
 {
-    regs.CFGR[CFGR0] = (regs.CFGR[CFGR0] & (~CFG0_REFON_MSK)) | (value << CFGR0_REFON_Pos);
+    regs.CFGR0w = (regs.CFGR0w & (~CFG0_REFON_MSK)) | (value << CFGR0_REFON_Pos);
 }
 
 bool LTC68041::cfgGetRefOn()
 {
-    return (regs.CFGR[CFGR0] & CFG0_REFON_MSK);
+    return (regs.CFGR0r & CFG0_REFON_MSK);
 }
 
 bool LTC68041::cfgGetSWTENPin() const
 {
-    return (regs.CFGR[CFGR0] & CFG0_SWTRD_MSK);
+    return (regs.CFGR0r & CFG0_SWTRD_MSK);
 }
 
 /*!******************************************************************************************************
@@ -293,6 +288,8 @@ void LTC68041::cfgWrite()//A two dimensional array of the configuration data tha
 
     SPI.transfer16(cmd);
     SPI.transfer16(calcPEC15(cmd));
+
+    regs.CFGR[CFGR0] = regs.CFGR0w;
 
     for(const auto &element: regs.CFGR)
     {
@@ -493,7 +490,12 @@ constexpr inline float LTC68041::parseVoltage(const std::array<std::uint8_t, SIZ
 *********************************************************************************************************/
 bool LTC68041::cfgRead()                
 {
-    return spi_read_cmd(RDCFG, regs.CFGR);
+    bool ret;
+
+    ret = spi_read_cmd(RDCFG, regs.CFGR);
+    regs.CFGR0r = regs.CFGR[CFGR0];
+
+    return ret;
 }
 
 /*!*******************************************************************************************************
