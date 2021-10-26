@@ -32,7 +32,8 @@ bool is_total_current_measurer = false;
 WiFiClientSecure espClient;
 PubSubClient client(mqtt_server, mqtt_port, espClient);
 
-std::array<unsigned long, 12> cells_to_balance{};
+std::array<unsigned long, 12> cells_to_balance_start{};
+std::array<unsigned long, 12> cells_to_balance_interval{};
 
 unsigned long last_connection = 0;
 
@@ -89,7 +90,7 @@ void reconnect() {
             //   DEBUG_PRINTLN(" try again in 5 seconds");
             // Wait 5 seconds before retrying
             // delay(5000);
-            if (last_connection != 0 && last_connection + 30000 < millis()) {
+            if (last_connection != 0 && millis() - last_connection >= 30000) {
                 EspClass::restart();
             }
             delay(1000);
@@ -105,7 +106,7 @@ String payload_to_string(byte *payload, unsigned int length) {
     return result;
 }
 
-long last_master_uptime = 0;
+unsigned long last_master_uptime = 0;
 
 void callback(char *topic, byte *payload, unsigned int length) {
     String topic_string = String(topic);
@@ -118,22 +119,22 @@ void callback(char *topic, byte *payload, unsigned int length) {
         delay(50);
         digitalWrite(LED_BUILTIN, HIGH);
 
-        long uptime_long = uptime.toInt();
+        unsigned long uptime_u_long = std::stoul(uptime.c_str());
 
-        if (uptime_long - last_master_uptime > MASTER_TIMEOUT) {
-            DEBUG_PRINTLN(uptime_long);
+        if (uptime_u_long - last_master_uptime > MASTER_TIMEOUT) {
+            DEBUG_PRINTLN(uptime_u_long);
             DEBUG_PRINTLN(last_master_uptime);
             DEBUG_PRINTLN(">>> Master Timeout!!");
         }
-        last_master_uptime = uptime_long;
+        last_master_uptime = uptime_u_long;
     } else if (topic_string.startsWith(module_topic + "/cell/")) {
         String get_cell = topic_string.substring((module_topic + "/cell/").length());
         get_cell = get_cell.substring(0, get_cell.indexOf("/"));
         long cell_number = get_cell.toInt();
         if (topic_string.equals(module_topic + "/cell/" + cell_number + "/balance_request")) {
             unsigned long balance_time = std::stoul(payload_to_string(payload, length).c_str());
-            balance_time += millis();
-            cells_to_balance.at(cell_number - 1) = balance_time;
+            cells_to_balance_start.at(cell_number - 1) = millis();
+            cells_to_balance_interval.at(cell_number - 1) = balance_time;
         }
     } else if (topic_string.equals(mac_topic + "/blink")) {
         for (int i = 0; i < 50; i++) {
@@ -299,25 +300,13 @@ void set_LTC(std::bitset<12> &balance_bits) {
 
 // the loop function runs over and over again forever
 void loop() {
-    unsigned long uptime_millis = millis();
-
-    /*
-     * check time overflow
-     */
-    if (uptime_millis < last_connection) {
-        for (auto &cell_to_balance : cells_to_balance) {
-            cell_to_balance = 0;
-        }
-        last_connection = 0;
-    }
-
     /*
      * MQTT reconnect if needed
      */
     if (!client.connected()) {
         reconnect();
     }
-    last_connection = uptime_millis;
+    last_connection = millis();
 
     /*
      * MQTT check messages
@@ -330,9 +319,12 @@ void loop() {
      * set LTC balance bits
      */
     std::bitset<12> balance_bits{};
-    for (size_t i = 0; i < cells_to_balance.size(); ++i) {
-        if (cells_to_balance[i] >= uptime_millis) {
-            balance_bits[i] = true;
+    unsigned long uptime_millis = millis();
+    for (size_t i = 0; i < cells_to_balance_start.size(); ++i) {
+        if (uptime_millis - cells_to_balance_start.at(i) <= cells_to_balance_interval.at(i)) {
+            balance_bits.set(i, true);
+        } else if (cells_to_balance_interval.at(i) > 0) {
+            cells_to_balance_interval.at(i) = 0;
         }
     }
     set_LTC(balance_bits);
