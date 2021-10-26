@@ -271,8 +271,6 @@ void set_LTC(std::bitset<12> &balance_bits) {
     }
     LTC.cfgSetDCC(balance_bits);
 
-    LTC.set_cfgr0(); //debug, TODO to fix
-
     LTC.cfgWrite();
     //Start different Analog-Digital-Conversions in the Chip
 
