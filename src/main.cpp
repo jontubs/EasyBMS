@@ -106,7 +106,7 @@ String payload_to_string(byte *payload, unsigned int length) {
     return result;
 }
 
-unsigned long last_master_uptime = 0;
+unsigned long long last_master_uptime = 0;
 
 void callback(char *topic, byte *payload, unsigned int length) {
     String topic_string = String(topic);
@@ -119,7 +119,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
         delay(50);
         digitalWrite(LED_BUILTIN, HIGH);
 
-        unsigned long uptime_u_long = std::stoul(uptime.c_str());
+        unsigned long long uptime_u_long = std::stoull(uptime.c_str());
 
         if (uptime_u_long - last_master_uptime > MASTER_TIMEOUT) {
             DEBUG_PRINTLN(uptime_u_long);
