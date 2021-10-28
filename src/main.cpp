@@ -20,7 +20,8 @@
 
 static LTC68041 LTC = LTC68041(D8);
 
-static const long MASTER_TIMEOUT = 5000;
+constexpr unsigned long MASTER_TIMEOUT = 5000;
+constexpr unsigned long LTC_CHECK_INTERVAL = 1000;
 
 String hostname;
 String mac_topic;
@@ -35,7 +36,11 @@ PubSubClient client(mqtt_server, mqtt_port, espClient);
 std::array<unsigned long, 12> cells_to_balance_start{};
 std::array<unsigned long, 12> cells_to_balance_interval{};
 
+unsigned long last_ltc_check = 0;
 unsigned long last_connection = 0;
+unsigned long long last_master_uptime = 0;
+
+bool led_builtin_state = false;
 
 // connect to wifi
 void connectWifi() {
@@ -106,8 +111,6 @@ String payload_to_string(byte *payload, unsigned int length) {
     return result;
 }
 
-unsigned long long last_master_uptime = 0;
-
 void callback(char *topic, byte *payload, unsigned int length) {
     String topic_string = String(topic);
     if (topic_string.equals("master/uptime")) {
@@ -115,9 +118,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
         DEBUG_PRINT("Got heartbeat from master: ");
         DEBUG_PRINTLN(uptime);
 
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(50);
-        digitalWrite(LED_BUILTIN, HIGH);
+        digitalWrite(LED_BUILTIN, led_builtin_state);
+        led_builtin_state = !led_builtin_state;
 
         unsigned long long uptime_u_long = std::stoull(uptime.c_str());
 
@@ -166,6 +168,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(D5, OUTPUT);
     pinMode(D1, OUTPUT);
+    digitalWrite(LED_BUILTIN, false);
 
     DEBUG_BEGIN(74880);
     DEBUG_PRINTLN("init");
@@ -182,6 +185,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     module_topic = mac_topic;
 
     connectWifi();
+    digitalWrite(LED_BUILTIN, true);
     randomSeed(micros());
 
     LTC.initSPI(D7, D6, D5); //Initialize LTC6804 hardware
@@ -305,29 +309,24 @@ void loop() {
         reconnect();
     }
     last_connection = millis();
+    client.loop();
 
-    /*
-     * MQTT check messages
-     */
-    for (int i = 0; i < 5; ++i) {
-        client.loop();
-    }
-
-    /*
-     * set LTC balance bits
-     */
-    std::bitset<12> balance_bits{};
     unsigned long uptime_millis = millis();
-    for (size_t i = 0; i < cells_to_balance_start.size(); ++i) {
-        if (uptime_millis - cells_to_balance_start.at(i) <= cells_to_balance_interval.at(i)) {
-            balance_bits.set(i, true);
-        } else if (cells_to_balance_interval.at(i) > 0) {
-            cells_to_balance_interval.at(i) = 0;
+    if (uptime_millis - last_ltc_check > LTC_CHECK_INTERVAL) {
+        last_ltc_check = uptime_millis;
+        /*
+         * set LTC balance bits
+         */
+        std::bitset<12> balance_bits{};
+        for (size_t i = 0; i < cells_to_balance_start.size(); ++i) {
+            if (uptime_millis - cells_to_balance_start.at(i) <= cells_to_balance_interval.at(i)) {
+                balance_bits.set(i, true);
+            } else if (cells_to_balance_interval.at(i) > 0) {
+                cells_to_balance_interval.at(i) = 0;
+            }
         }
+        set_LTC(balance_bits);
+
+        publish_mqtt_values(balance_bits);
     }
-    set_LTC(balance_bits);
-
-    publish_mqtt_values(balance_bits);
-
-    delay(1000);
 }
