@@ -104,25 +104,18 @@ void reconnect() {
     }
 }
 
-String payload_to_string(byte *payload, unsigned int length) {
-    String result = "";
-    for (unsigned int i = 0; i < length; i++) {
-        result += static_cast<char>(payload[i]);
-    }
-    return result;
-}
-
 void callback(char *topic, byte *payload, unsigned int length) {
     String topic_string = String(topic);
-    if (topic_string.equals("master/uptime")) {
-        String uptime = payload_to_string(payload, length);
+    String payload_string = String();
+    payload_string.concat((char *) payload, length);
+    if (topic_string == "master/uptime") {
         DEBUG_PRINT("Got heartbeat from master: ");
-        DEBUG_PRINTLN(uptime);
+        DEBUG_PRINTLN(payload_string);
 
         digitalWrite(LED_BUILTIN, led_builtin_state);
         led_builtin_state = !led_builtin_state;
 
-        unsigned long long uptime_u_long = std::stoull(uptime.c_str());
+        unsigned long long uptime_u_long = std::stoull(payload_string.c_str());
 
         if (uptime_u_long - last_master_uptime > MASTER_TIMEOUT) {
             DEBUG_PRINTLN(uptime_u_long);
@@ -134,30 +127,30 @@ void callback(char *topic, byte *payload, unsigned int length) {
         String get_cell = topic_string.substring((module_topic + "/cell/").length());
         get_cell = get_cell.substring(0, get_cell.indexOf("/"));
         long cell_number = get_cell.toInt();
-        if (topic_string.equals(module_topic + "/cell/" + cell_number + "/balance_request")) {
-            unsigned long balance_time = std::stoul(payload_to_string(payload, length).c_str());
+        if (topic_string == module_topic + "/cell/" + cell_number + "/balance_request") {
+            unsigned long balance_time = std::stoul(payload_string.c_str());
             cells_to_balance_start.at(cell_number - 1) = millis();
             cells_to_balance_interval.at(cell_number - 1) = balance_time;
         }
-    } else if (topic_string.equals(mac_topic + "/blink")) {
+    } else if (topic_string == mac_topic + "/blink") {
         for (int i = 0; i < 50; i++) {
             digitalWrite(LED_BUILTIN, HIGH);
             delay(50);
             digitalWrite(LED_BUILTIN, LOW);
             delay(50);
         }
-    } else if (topic_string.equals(mac_topic + "/set_config")) {
-        String config = payload_to_string(payload, length);
-        String module_number_string = config.substring(0, config.indexOf(","));
-        String total_voltage_measurer_string = config.substring(config.indexOf(",") + 1, config.lastIndexOf(","));
-        String total_current_measurer_string = config.substring(config.lastIndexOf(",") + 1);
+    } else if (topic_string == mac_topic + "/set_config") {
+        String module_number_string = payload_string.substring(0, payload_string.indexOf(","));
+        String total_voltage_measurer_string = payload_string.substring(payload_string.indexOf(",") + 1,
+                                                                        payload_string.lastIndexOf(","));
+        String total_current_measurer_string = payload_string.substring(payload_string.lastIndexOf(",") + 1);
         module_topic = String("esp-module/") + module_number_string;
         is_total_voltage_measurer = total_voltage_measurer_string.equals("1");
         is_total_current_measurer = total_current_measurer_string.equals("1");
         client.disconnect();
         reconnect();
-    } else if (topic_string.equals(mac_topic + "/restart")) {
-        if (payload_to_string(payload, length).equals("1")) {
+    } else if (topic_string == mac_topic + "/restart") {
+        if (payload_string == "1") {
             EspClass::restart();
         }
     }
