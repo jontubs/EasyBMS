@@ -7,6 +7,7 @@
 #include "credentials.h"
 
 #define DEBUG
+#define SSL_ENABLED false
 
 #ifdef DEBUG
 #define DEBUG_BEGIN(...) Serial.begin( __VA_ARGS__ )
@@ -30,8 +31,12 @@ String module_topic;
 bool is_total_voltage_measurer = false;
 bool is_total_current_measurer = false;
 
-//WiFiClientSecure espClient;
+#if SSL_ENABLED
+WiFiClientSecure espClient;
+#else
 WiFiClient espClient;
+#endif
+
 PubSubClient client(mqtt_server, mqtt_port, espClient);
 
 std::array<unsigned long, 12> cells_to_balance_start{};
@@ -184,7 +189,10 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
     LTC.initSPI(D7, D6, D5); //Initialize LTC6804 hardware
 
-    //espClient.setTrustAnchors(&mqtt_cert_store);
+    #if SSL_ENABLED
+    espClient.setTrustAnchors(&mqtt_cert_store);
+    #endif
+
     client.setCallback(callback);
 }
 
