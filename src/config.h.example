@@ -1,7 +1,10 @@
-#ifndef EASYBMS_SLAVE_CREDENTIALS_H
-#define EASYBMS_SLAVE_CREDENTIALS_H
+#pragma once
 
 #include <ESP8266WiFi.h>
+#include <pgmspace.h>
+#include "battery_type.h"
+
+BatteryType battery_type = BatteryType::meb12s;
 
 constexpr char ssid[] = "WIFI_SSID";
 constexpr char password[] = "WIFI_PASS";
@@ -17,5 +20,3 @@ INSERT PEM CERTIFICATE HERE
 -----END CERTIFICATE-----
 )EOF";
 inline X509List mqtt_cert_store(mqtt_cert);
-
-#endif //EASYBMS_SLAVE_CREDENTIALS_H
