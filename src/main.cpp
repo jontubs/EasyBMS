@@ -4,7 +4,7 @@
 #include <lwip/dns.h>
 #include <PubSubClient.h>
 
-#include "credentials.h"
+#include "config.h"
 
 #define DEBUG
 #define SSL_ENABLED false
@@ -109,6 +109,61 @@ void reconnect() {
     }
 }
 
+String cell_name_from_id(int cell_id) {
+    int cell_number = cell_id + 1;
+    if(battery_type == BatteryType::meb8s) {
+        if (cell_number <= 4) {
+            // do nothing, cell number is correct
+        } else if (cell_number > 4 && cell_number <= 8) {
+            // These cells dont exist on 8s batteries
+            return "undefined";
+        } else {
+            cell_number = cell_number - 4;
+        }
+    }
+
+    return String(cell_number);
+}
+
+bool string_is_uint(String myString)
+{
+  for(uint16_t i = 0; i < myString.length(); i++)
+  {
+    if (!isDigit(myString[i]))
+    {
+        return false;
+    }
+  }
+
+  return true;
+}
+
+int cell_id_from_name(String cell_name) {
+    // cell number needs to be an unsigned integer
+    if(!string_is_uint(cell_name)) {
+        return -1;
+    }
+
+    int cell_number = cell_name.toInt();
+    int highest_cell_number = 12;
+    if (battery_type == BatteryType::meb8s) {
+        highest_cell_number = 8;
+    }
+    // cell number needs to be between 1 and 12 or 1 and 8 for 8s modules
+    if (cell_number < 1 || cell_number > highest_cell_number) {
+        return -1;
+    }
+
+    // do the 8s cell mapping
+    if (battery_type == BatteryType::meb8s) {
+        if (cell_number >= 5) {
+            cell_number = cell_number + 4;
+        }
+    }
+
+    return cell_number - 1;
+}
+
 void callback(char *topic, byte *payload, unsigned int length) {
     String topic_string = String(topic);
     String payload_string = String();
@@ -129,13 +184,16 @@ void callback(char *topic, byte *payload, unsigned int length) {
         }
         last_master_uptime = uptime_u_long;
     } else if (topic_string.startsWith(module_topic + "/cell/")) {
-        String get_cell = topic_string.substring((module_topic + "/cell/").length());
-        get_cell = get_cell.substring(0, get_cell.indexOf("/"));
-        long cell_number = get_cell.toInt();
-        if (topic_string == module_topic + "/cell/" + cell_number + "/balance_request") {
+        String cell_name = topic_string.substring((module_topic + "/cell/").length());
+        cell_name = cell_name.substring(0, cell_name.indexOf("/"));
+        long cell_id = cell_id_from_name(cell_name);
+        if (cell_id == -1) {
+            return;
+        }
+        if (topic_string == module_topic + "/cell/" + cell_name + "/balance_request") {
             unsigned long balance_time = std::stoul(payload_string.c_str());
-            cells_to_balance_start.at(cell_number - 1) = millis();
-            cells_to_balance_interval.at(cell_number - 1) = balance_time;
+            cells_to_balance_start.at(cell_id) = millis();
+            cells_to_balance_interval.at(cell_id) = balance_time;
         }
     } else if (topic_string == mac_topic + "/blink") {
         for (int i = 0; i < 50; i++) {
@@ -206,14 +264,18 @@ void publish_mqtt_values(std::bitset<12> &balance_bits) {
     std::array<float, 12> cell_voltages{};
     LTC.getCellVoltages(cell_voltages);
     for (size_t i = 0; i < cell_voltages.size(); i++) {
-        client.publish((module_topic + "/cell/" + String(i + 1) + "/voltage").c_str(),
+        String cell_name = cell_name_from_id(i);
+        if (cell_name == "undefined") {
+            continue;
+        }
+        client.publish((module_topic + "/cell/" + cell_name + "/voltage").c_str(),
                        String(cell_voltages[i], 3).c_str(), true);
-//        client.publish((module_topic + "/cell/" + String(i + 1) + "/balance_time").c_str(),
+//        client.publish((module_topic + "/cell/" + cell_name + "/balance_time").c_str(),
 //                       String(cells_to_balance[i]).c_str(), true);
         if (balance_bits.test(i)) {
-            client.publish((module_topic + "/cell/" + String(i + 1) + "/is_balancing").c_str(), "1", true);
+            client.publish((module_topic + "/cell/" + cell_name + "/is_balancing").c_str(), "1", true);
         } else {
-            client.publish((module_topic + "/cell/" + String(i + 1) + "/is_balancing").c_str(), "0", true);
+            client.publish((module_topic + "/cell/" + cell_name + "/is_balancing").c_str(), "0", true);
         }
     }
 
