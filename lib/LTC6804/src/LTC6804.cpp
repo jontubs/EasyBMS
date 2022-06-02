@@ -17,15 +17,34 @@ https://github.com/jontubs/EasyBMS
 
 
 /**
- * @brief Creating of the object LTC68041
+ * @brief Creating of the object LTC6804 (Version 1)
  * 
  * @param pCS Pin used as chip select
  */
-LTC68041::LTC68041(byte pCS, float tempOffset)
-  : offsetTemp(tempOffset), md(MD_NORMAL), pinCS(pCS), regs({})
+LTC6804::LTC6804(byte pCS, float tempOffset)
+  : offsetTemp(tempOffset),
+    am(AM_BROADCAST),
+    address(0),
+    md(MD_NORMAL),
+    pinCS(pCS),
+    regs({})
 {
-    Serial.print("Objekt angelegt");
+    regs.CFGR0w = 0xFE;
+}
 
+/**
+ * @brief Creating of the object LTC6804 (Version 2)
+ * 
+ * @param pCS Pin used as chip select
+ */
+LTC6804::LTC6804(std::uint16_t addr, byte pCS, float tempOffset)
+  : offsetTemp(tempOffset),
+    am(AM_ADRESSED),
+    address(addr << ADDRPos),
+    md(MD_NORMAL),
+    pinCS(pCS),
+    regs({})
+{
     regs.CFGR0w = 0xFE;
 }
 
@@ -36,7 +55,7 @@ LTC68041::LTC68041(byte pCS, float tempOffset)
  * @param pinMISO Pin used as MISO
  * @param pinCLK Pin used as SCK
  */
-void LTC68041::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK)
+void LTC6804::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK)
 {
     pinMode(pinMOSI, OUTPUT);
     pinMode(pinMISO, INPUT);
@@ -50,7 +69,7 @@ void LTC68041::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK)
  * @brief Uninitializes the used SPI instance
  * 
  */
-void LTC68041::destroySPI()
+void LTC6804::destroySPI()
 {
     SPI.end();
 }
@@ -59,7 +78,7 @@ void LTC68041::destroySPI()
  * @brief Wake isoSPI up from idle state
  *        Generic wakeup commannd to wake isoSPI up out of idle 
  */
-void LTC68041::wakeup_idle() const
+void LTC6804::wakeup_idle() const
 {
     digitalWrite(pinCS, LOW);
     delayMicroseconds(2); //Guarantees the isoSPI will be in ready mode
@@ -69,7 +88,7 @@ void LTC68041::wakeup_idle() const
 /*!******************************************************************************************************
 Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
-constexpr std::uint16_t LTC68041::calcPEC15(const std::uint16_t data) const
+constexpr std::uint16_t LTC6804::calcPEC15(const std::uint16_t data) const
 {
     std::uint16_t remainder = 16, addr = 0;//initialize the PEC
 
@@ -86,7 +105,7 @@ constexpr std::uint16_t LTC68041::calcPEC15(const std::uint16_t data) const
 Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
 template<std::size_t N>
-constexpr std::uint16_t LTC68041::calcPEC15(const std::array<std::uint8_t, N> &data) const
+constexpr std::uint16_t LTC6804::calcPEC15(const std::array<std::uint8_t, N> &data) const
 {
     std::uint16_t remainder = 16, addr = 0;//initialize the PEC
 
@@ -106,7 +125,7 @@ Tested and runs fine
 [out] std::array<std::uint8_t, N2> &rx_data array that read data will be written too.
 *********************************************************************************************************/
 template<std::size_t N>
-bool LTC68041::spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data)
+bool LTC6804::spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data)
 {
     std::uint16_t pec = calcPEC15(cmd);
 
@@ -133,7 +152,7 @@ bool LTC68041::spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N>
 Writes and read a set number of bytes using the SPI port without expecting an answer
 std::array<std::uint8_t, N> &data //Array of bytes to be written on the SPI port
 *********************************************************************************************************/
-void LTC68041::spi_write_cmd(const std::uint16_t cmd) const
+void LTC6804::spi_write_cmd(const std::uint16_t cmd) const
 {
     std::uint16_t pec = calcPEC15(cmd);
 
@@ -151,7 +170,7 @@ void LTC68041::spi_write_cmd(const std::uint16_t cmd) const
 calculates the bitpattern in the config for Undervoltage detection  
 the config has to be written to the chip after this!
 *********************************************************************************************************/
-void LTC68041::cfgSetVUV(const float Undervoltage)
+void LTC6804::cfgSetVUV(const float Undervoltage)
 {
     unsigned int VUV = static_cast<unsigned int>(Undervoltage / (0.0001f * 16.0f)) - 1;		//calc bitpattern for UV
 
@@ -160,7 +179,7 @@ void LTC68041::cfgSetVUV(const float Undervoltage)
     regs.CFGR[CFGR2] = (regs.CFGR[CFGR2] & (~CFG2_VUV_MSK)) | ((VUV >> 8) & CFG2_VUV_MSK);
 }
 
-float LTC68041::cfgGetVUV() const
+float LTC6804::cfgGetVUV() const
 {
     unsigned int value;
 
@@ -172,7 +191,7 @@ float LTC68041::cfgGetVUV() const
 calculates the bitpattern in the config for Overvoltage detection  
 the config has to be written to the chip after this!
 *********************************************************************************************************/
-void LTC68041::cfgSetVOV(const float Overvoltage)
+void LTC6804::cfgSetVOV(const float Overvoltage)
 {
     //float Undervoltage=3.123;
     //float Overvoltage=3.923;
@@ -183,7 +202,7 @@ void LTC68041::cfgSetVOV(const float Overvoltage)
     regs.CFGR[CFGR3] = (VOV >> 4) & CFG3_VOV_MSK;
 }
 
-float LTC68041::cfgGetVOV() const
+float LTC6804::cfgGetVOV() const
 {
     unsigned int value;
 
@@ -197,19 +216,19 @@ Sets  the configuration array for cell balancing
   2. Calculate adcv cmd PEC and load pec into cmd array
   Discharge this cell (1-12), disable all other, IF -1 then all off
 *********************************************************************************************************/
-void LTC68041::cfgSetDCC(std::bitset<12> dcc)
+void LTC6804::cfgSetDCC(std::bitset<12> dcc)
 {
     // assert 0x0fff
     regs.CFGR[CFGR4] = (dcc.to_ulong() & CFG4_DCC_MSK); // (regs.CFGRx[CFGR1] & CFG1_DCC_INVMSK) |
     regs.CFGR[CFGR5] = (regs.CFGR[CFGR5] & (~CFG5_DCC_MSK)) | ((dcc.to_ulong() >> 8) & CFG5_DCC_MSK);
 }
 
-std::bitset<12> LTC68041::cfgGetDCC() const
+std::bitset<12> LTC6804::cfgGetDCC() const
 {
     return std::bitset<12>{regs.CFGR[CFGR4] | (static_cast<unsigned long long>(regs.CFGR[CFGR5] & CFG5_DCC_MSK) << 8)};
 }
 
-void LTC68041::cfgSetDischargeTimeout(DischargeTimeout timeout)
+void LTC6804::cfgSetDischargeTimeout(DischargeTimeout timeout)
 {
     regs.CFGR[CFGR5] = (regs.CFGR[CFGR5] & (~CFG5_DCTO_MSK)) | timeout;
 }
@@ -221,7 +240,7 @@ void LTC68041::cfgSetDischargeTimeout(DischargeTimeout timeout)
  * 
  * @param mode ADC mode as enum value of type ADCFilterMode
  */
-void LTC68041::cfgSetADCMode(ADCFilterMode mode)
+void LTC6804::cfgSetADCMode(ADCFilterMode mode)
 {
     switch(mode)
     {
@@ -254,17 +273,17 @@ void LTC68041::cfgSetADCMode(ADCFilterMode mode)
     }
 }
 
-void LTC68041::cfgSetRefOn(const bool value)
+void LTC6804::cfgSetRefOn(const bool value)
 {
     regs.CFGR0w = (regs.CFGR0w & (~CFG0_REFON_MSK)) | (value << CFGR0_REFON_Pos);
 }
 
-bool LTC68041::cfgGetRefOn()
+bool LTC6804::cfgGetRefOn()
 {
     return (regs.CFGR0r & CFG0_REFON_MSK);
 }
 
-bool LTC68041::cfgGetSWTENPin() const
+bool LTC6804::cfgGetSWTENPin() const
 {
     return (regs.CFGR0r & CFG0_SWTRD_MSK);
 }
@@ -279,9 +298,11 @@ Write the LTC6804 configuration register
 
  uint8_t config[6] is an array of the configuration data that will be written.
 *********************************************************************************************************/
-void LTC68041::cfgWrite()//A two dimensional array of the configuration data that will be written
+void LTC6804::cfgWrite()//A two dimensional array of the configuration data that will be written
 {
     std::uint16_t cmd = WRCFG;
+    cmd |= am;
+    cmd |= address;
 
     SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
@@ -339,7 +360,7 @@ return Function returns SOC from 0-1.
 Funktion ist kaputt , muss ich mal fixen
 TODO: refactor
 *********************************************************************************************************/
-float LTC68041::cellComputeSOC(float voc) {
+float LTC6804::cellComputeSOC(float voc) {
     
     /*const double t_offset = 3.00205;
     const double t_step = 0.01;
@@ -380,18 +401,18 @@ float LTC68041::cellComputeSOC(float voc) {
  The command clears the Auxiliary registers and intiallizes
  all values to 1. The register will read back hexadecimal 0xFF
  after the command is sent.
- LTC68041::clraux Function sequence:
+ LTC6804::clraux Function sequence:
 
   1. Load clraux command into cmd array
   2. Calculate clraux cmd PEC and load pec into cmd array
   3. send broadcast clraux command
 *********************************************************************************************************/
-void LTC68041::clrAuxRegs() const
+void LTC6804::clrAuxRegs() const
 {
     //3
     wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
     //4
-    spi_write_cmd(CLRAUX);
+    spi_write_cmd(CLRAUX | am | address);
 }
 
 /*!*******************************************************************************************************
@@ -407,7 +428,7 @@ Reads and parses the LTC6804 cell voltage registers.
   4. Return pec_error flag  
 *********************************************************************************************************/
 template<std::size_t N>
-bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel ch)
+bool LTC6804::getCellVoltages(std::array<float, N> &voltages, const CellChannel ch)
 {
     std::array<float, CELLNUM> cellVoltage{};	//Cell voltage on volt
 
@@ -417,10 +438,10 @@ bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel
         case CellChannel::CH_CELL_1_AND_7:
         case CellChannel::CH_CELL_2_AND_8:
         case CellChannel::CH_CELL_3_AND_9:
-            if(!spi_read_cmd(RDCVA, regs.CVAR))
+            if(!spi_read_cmd(RDCVA | am | address, regs.CVAR))
                 return false;
 
-            if(!spi_read_cmd(RDCVC, regs.CVCR))
+            if(!spi_read_cmd(RDCVC | am | address, regs.CVCR))
                 return false;
 
             parseVoltages(0, regs.CVAR, cellVoltage);
@@ -431,10 +452,10 @@ bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel
         case CellChannel::CH_CELL_4_AND_10:
         case CellChannel::CH_CELL_5_AND_11:
         case CellChannel::CH_CELL_6_AND_12:
-            if(!spi_read_cmd(RDCVB, regs.CVBR))
+            if(!spi_read_cmd(RDCVB | am | address, regs.CVBR))
                 return false;
 
-            if(!spi_read_cmd(RDCVD, regs.CVDR))
+            if(!spi_read_cmd(RDCVD | am | address, regs.CVDR))
                 return false;
 
             parseVoltages(1, regs.CVBR, cellVoltage);
@@ -461,7 +482,7 @@ bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel
  * @param data Array for target values
  */
 template<std::size_t N>
-constexpr inline void LTC68041::parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regGroup, std::array<float, N> &data)
+constexpr inline void LTC6804::parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regGroup, std::array<float, N> &data)
 {
     unsigned int index = (group) * 3;
 
@@ -471,7 +492,7 @@ constexpr inline void LTC68041::parseVoltages(const unsigned int group, const st
     }
 }
 
-constexpr inline float LTC68041::parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, const RegNames index)
+constexpr inline float LTC6804::parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, const RegNames index)
 {
     return static_cast<float>(regGroup[index] | (static_cast<unsigned int>(regGroup[index + 1]) << 8u)) * 100E-6f;
 }
@@ -488,11 +509,11 @@ constexpr inline float LTC68041::parseVoltage(const std::array<std::uint8_t, SIZ
  6. Copy data to object
  7. Return Result -1= Error , 0= DataOkay
 *********************************************************************************************************/
-bool LTC68041::cfgRead()                
+bool LTC6804::cfgRead()                
 {
     bool ret;
 
-    ret = spi_read_cmd(RDCFG, regs.CFGR);
+    ret = spi_read_cmd(RDCFG | am | address, regs.CFGR);
     regs.CFGR0r = regs.CFGR[CFGR0];
 
     return ret;
@@ -507,13 +528,13 @@ bool LTC68041::cfgRead()
   2. Calculate clrcell cmd PEC and load pec into cmd array
   3. send broadcast clrcell command to LTC6804
 *********************************************************************************************************/
-void LTC68041::clrCellRegs() const
+void LTC6804::clrCellRegs() const
 {
     //3
     //wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
     //4
-    spi_write_cmd(CLRCELL);
+    spi_write_cmd(CLRCELL | am | address);
 }
 
 /*!*******************************************************************************************************
@@ -528,7 +549,7 @@ No other command necessary, Just call this and get
  5. compare PECs
  6. Send Serial message with result
 *********************************************************************************************************/
-bool LTC68041::checkSPI(const bool dbgOut)
+bool LTC6804::checkSPI(const bool dbgOut)
 {
     std::array<std::uint8_t, 6> response = {};
 
@@ -536,7 +557,7 @@ bool LTC68041::checkSPI(const bool dbgOut)
     if(dbgOut)
         digitalWrite(LED_BUILTIN, HIGH);
 
-    bool ret = spi_read_cmd(RDCFG, response);
+    bool ret = spi_read_cmd(RDCFG | am | address, response);
 
     if(dbgOut)
     {
@@ -582,39 +603,39 @@ bool LTC68041::checkSPI(const bool dbgOut)
 [return]  int8_t, PEC Status  0: No PEC error detected -1: PEC error detected, retry read
 
 *********************************************************************************************************/ 
-float LTC68041::getAuxVoltage(const AuxChannel chg)
+float LTC6804::getAuxVoltage(const AuxChannel chg)
 {
     wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
 
     switch(chg)
     {
         case AuxChannel::CHG_GPIO1:
-            if(!spi_read_cmd(RDAUXA, regs.AVAR))
+            if(!spi_read_cmd(RDAUXA | am | address, regs.AVAR))
                 return NAN;
                 
             return parseVoltage(regs.AVAR, AVAR0);
         case AuxChannel::CHG_GPIO2:
-            if(!spi_read_cmd(RDAUXA, regs.AVAR))
+            if(!spi_read_cmd(RDAUXA | am | address, regs.AVAR))
                 return NAN;
                 
             return parseVoltage(regs.AVAR, AVAR2);
         case AuxChannel::CHG_GPIO3:
-            if(!spi_read_cmd(RDAUXA, regs.AVAR))
+            if(!spi_read_cmd(RDAUXA | am | address, regs.AVAR))
                 return NAN;
                 
             return parseVoltage(regs.AVAR, AVAR4);
         case AuxChannel::CHG_GPIO4:
-            if(!spi_read_cmd(RDAUXB, regs.AVBR))
+            if(!spi_read_cmd(RDAUXB | am | address, regs.AVBR))
                 return NAN;
                 
             return parseVoltage(regs.AVBR, AVBR0);
         case AuxChannel::CHG_GPIO5:
-            if(!spi_read_cmd(RDAUXB, regs.AVBR))
+            if(!spi_read_cmd(RDAUXB | am | address, regs.AVBR))
                 return NAN;
                 
             return parseVoltage(regs.AVBR, AVBR2);
         case AuxChannel::CHG_VREF2:
-            if(!spi_read_cmd(RDAUXB, regs.AVBR))
+            if(!spi_read_cmd(RDAUXB | am | address, regs.AVBR))
                 return NAN;
                 
             return parseVoltage(regs.AVBR, AVBR4);
@@ -637,29 +658,29 @@ float LTC68041::getAuxVoltage(const AuxChannel chg)
  6. Copy data to object
  7. Return Result -1= Error , 0= DataOkay
 *********************************************************************************************************/
-float LTC68041::getStatusVoltage(const StatusGroup chst)
+float LTC6804::getStatusVoltage(const StatusGroup chst)
 {
     wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake, this command can be removed.
 
     switch(chst)
     {
         case StatusGroup::CHST_SOC:
-            if(!spi_read_cmd(RDSTATA, regs.STAR))
+            if(!spi_read_cmd(RDSTATA | am | address, regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Sum of all cell voltages Sum of all cell voltages = SOC * 100µV * 20
             return parseVoltage(regs.STAR, STAR0) * 20.0f;
         case StatusGroup::CHST_ITMP:
-            if(!spi_read_cmd(RDSTATA, regs.STAR))
+            if(!spi_read_cmd(RDSTATA | am | address, regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Internal Die Temperature Temperature Measurement (°C) = ITMP * 100µV / 7.5mV/°C - 273°C
             return (parseVoltage(regs.STAR, STAR2) / 7.5E-3f - 273.0f ) + offsetTemp;
         case StatusGroup::CHST_VA:
-            if(!spi_read_cmd(RDSTATA, regs.STAR))
+            if(!spi_read_cmd(RDSTATA | am | address, regs.STAR))
                 return NAN;
             //16-Bit ADC Measurement Value of Analog Power Supply Voltage Analog Power Supply Voltage = VA * 100µV Normal Range Is within 4.5V to 5.5V
             return parseVoltage(regs.STAR, STAR4);
         case StatusGroup::CHST_VD:
-            if(!spi_read_cmd(RDSTATB, regs.STBR))
+            if(!spi_read_cmd(RDSTATB | am | address, regs.STBR))
                 return NAN;
             //16-Bit ADC Measurement Value of Digital Power Supply Voltage Digital Power Supply Voltage = VA * 100µV Normal Range Is within 2.7V to 3.6V
             return parseVoltage(regs.STBR, STBR0);
@@ -670,28 +691,28 @@ float LTC68041::getStatusVoltage(const StatusGroup chst)
     }
 }
 
-bool LTC68041::getStatusMUXFail()
+bool LTC6804::getStatusMUXFail()
 {
-    if(!spi_read_cmd(RDSTATB, regs.STBR))
+    if(!spi_read_cmd(RDSTATB | am | address, regs.STBR))
         return false;
 
     return (regs.STBR[STBR5] & STBR5_MUXFAIL_MSK);
 }
 
-bool LTC68041::getStatusThermalShutdown()
+bool LTC6804::getStatusThermalShutdown()
 {
-    if(!spi_read_cmd(RDSTATB, regs.STBR))
+    if(!spi_read_cmd(RDSTATB | am | address, regs.STBR))
         return false;
 
     return (regs.STBR[STBR5] & STBR5_THSD_MSK);
 }
 
 //Cell x Overvoltage Flag x = 1 to 12 Cell Voltage Compared to VOV Comparison Voltage 0 -> Cell x Not Flagged for Overvoltage Condition. 1 -> Cell x Flagged
-std::bitset<12> LTC68041::getStatusOverVoltageFlags()
+std::bitset<12> LTC6804::getStatusOverVoltageFlags()
 {
     std::bitset<12> ret;
 
-    if(!spi_read_cmd(RDSTATB, regs.STBR))
+    if(!spi_read_cmd(RDSTATB | am | address, regs.STBR))
     {
         ret.reset();
         return ret;
@@ -714,11 +735,11 @@ std::bitset<12> LTC68041::getStatusOverVoltageFlags()
 }
 
 //Cell x Undervoltage Flag x = 1 to 12 Cell Voltage Compared to VUV Comparison Voltage 0 -> Cell x Not Flagged for Undervoltage Condition. 1 -> Cell x Flagged
-std::bitset<12> LTC68041::getStatusUnderVoltageFlags()
+std::bitset<12> LTC6804::getStatusUnderVoltageFlags()
 {
     std::bitset<12> ret;
 
-    if(!spi_read_cmd(RDSTATB, regs.STBR))
+    if(!spi_read_cmd(RDSTATB | am | address, regs.STBR))
     {
         ret.reset();
         return ret;
@@ -740,7 +761,7 @@ std::bitset<12> LTC68041::getStatusUnderVoltageFlags()
     return ret;
 }
 
-int LTC68041::getStatusRevision()
+int LTC6804::getStatusRevision()
 {
     return ((regs.STBR[STBR5] & STBR5_REV_MSK) >> 4);
 }
@@ -752,7 +773,7 @@ int LTC68041::getStatusRevision()
   CH   Determines which cell channels are converted
   DCP  Determines if Discharge is Permitted
 *********************************************************************************************************/
-void LTC68041::startCellConv(DischargeCtrl dcp, CellChannel ch) const
+void LTC6804::startCellConv(DischargeCtrl dcp, CellChannel ch) const
 {
 
     std::uint16_t cmd = ADCV;
@@ -770,7 +791,7 @@ void LTC68041::startCellConv(DischargeCtrl dcp, CellChannel ch) const
 /*!******************************************************************************************************
 Starts cell voltage conversion with test values from selftest 2
 *********************************************************************************************************/
-void LTC68041::startCellConvTest(SelfTestMode st) const
+void LTC6804::startCellConvTest(SelfTestMode st) const
 {
 
     std::uint16_t cmd = CVST;
@@ -791,7 +812,7 @@ void LTC68041::startCellConvTest(SelfTestMode st) const
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::startAuxConv(AuxChannel chg) const
+void LTC6804::startAuxConv(AuxChannel chg) const
 {
     std::uint16_t cmd = ADAX;
     cmd |= md;
@@ -809,7 +830,7 @@ void LTC68041::startAuxConv(AuxChannel chg) const
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::startCellAuxConv(DischargeCtrl dcp) const
+void LTC6804::startCellAuxConv(DischargeCtrl dcp) const
 {
     std::uint16_t cmd = ADCVAX;
     cmd |= md;
@@ -827,7 +848,7 @@ void LTC68041::startCellAuxConv(DischargeCtrl dcp) const
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::startStatusConv(StatusGroup chst) const
+void LTC6804::startStatusConv(StatusGroup chst) const
 {
     std::uint16_t cmd = ADSTAT;
     cmd |= md;
@@ -844,7 +865,7 @@ void LTC68041::startStatusConv(StatusGroup chst) const
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch) const
+void LTC6804::startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch) const
 {
     std::uint16_t cmd = ADOW;
     cmd |= md;
@@ -860,7 +881,7 @@ void LTC68041::startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch
 Prints out configuration registers of a LTC6804
 Giving additional Debug infos via Serial
 *********************************************************************************************************/
-void LTC68041::readCfgDbg()
+void LTC6804::readCfgDbg()
 {
     Serial.println();
     Serial.print("Config Register Group: ");
@@ -877,7 +898,7 @@ void LTC68041::readCfgDbg()
 /*!******************************************************************************************************
 Prints out Status Register Groups and parsed values
 *********************************************************************************************************/
-void LTC68041::readStatusDbg()
+void LTC6804::readStatusDbg()
 {
     Serial.println();
     Serial.print("RSP Status Register Group A: ");
@@ -903,15 +924,15 @@ void LTC68041::readStatusDbg()
     Serial.println(" °C");
 
     Serial.print("Sum of all Cells Voltage: ");
-    Serial.print(getStatusVoltage(LTC68041::CHST_SOC));
+    Serial.print(getStatusVoltage(LTC6804::CHST_SOC));
     Serial.println(" V");
 
     Serial.print("Analog Supply Voltage: ");
-    Serial.print(getStatusVoltage(LTC68041::CHST_VA));
+    Serial.print(getStatusVoltage(LTC6804::CHST_VA));
     Serial.println(" V");
 
     Serial.print("Digital Supply Voltage: ");
-    Serial.print(getStatusVoltage(LTC68041::CHST_VD));
+    Serial.print(getStatusVoltage(LTC6804::CHST_VD));
     Serial.println(" V");
 
     Serial.print("Overvoltageflags: ");
@@ -930,7 +951,7 @@ void LTC68041::readStatusDbg()
     Serial.println(getStatusThermalShutdown());
 }
 
-void LTC68041::readAuxDbg()
+void LTC6804::readAuxDbg()
 {
     std::array<float, AUXNUM> auxVoltage;	//Voltage of GPIOS and VREF2 in Volt
 
@@ -979,7 +1000,7 @@ Reads and parses the LTC6804 cell voltage registers and returns some additional 
  The function is used to print out Cell Voltage Register Groups
  and Cell Voltage values in Volt.
 *********************************************************************************************************/
-void LTC68041::readCellsDbg() // Array of the parsed cell codes
+void LTC6804::readCellsDbg() // Array of the parsed cell codes
 {
     std::array<float, 12> cellVoltages;
 

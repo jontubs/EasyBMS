@@ -7,8 +7,8 @@ I modified it to make it compatible with the ESP8622
 https://github.com/jontubs/EasyBMS
 ***********************************************************/
 
-#ifndef LTC68041_H
-#define LTC68041_H
+#ifndef LTC6804_H
+#define LTC6804_H
 
 #include <Arduino.h>
 #include <SPI.h>
@@ -16,7 +16,7 @@ https://github.com/jontubs/EasyBMS
 #include <array>
 #include <bitset>
 
-class LTC68041
+class LTC6804
 {
 private:
 
@@ -25,6 +25,8 @@ private:
     static constexpr int DCPPos = 4;
     static constexpr int STPos = 5;
     static constexpr int PUPPos = 6;
+    static constexpr int ADDRCMDPos = 15;
+    static constexpr int ADDRPos = 11;
 
 public:
 
@@ -77,12 +79,12 @@ public:
     /**
      * @brief ADC Conversion Mode
      *
-     * | 27kHz Mode (Fast)           |
-     * | 7kHz Mode (Normal)          |
-     * | 26Hz Mode (Filtered)        |
-     * | 14kHz Mode                  |
-     * | 3kHz Mode                   |
-     * | 2kHz Mode                   |
+     * | 27kHz Mode (Fast)    |
+     * | 7kHz Mode (Normal)   |
+     * | 26Hz Mode (Filtered) |
+     * | 14kHz Mode           |
+     * | 3kHz Mode            |
+     * | 2kHz Mode            |
      */
     enum ADCFilterMode {
         FAST,
@@ -99,15 +101,15 @@ public:
     /**
      * @brief Cell Channels to convert
      *
-     * |CH | Dec  | Channels to convert |
-     * |---|------|---------------------|
-     * |000| 0    | All Cells           |
-     * |001| 1    | Cell 1 and Cell 7   |
-     * |010| 2    | Cell 2 and Cell 8   |
-     * |011| 3    | Cell 3 and Cell 9   |
-     * |100| 4    | Cell 4 and Cell 10  |
-     * |101| 5    | Cell 5 and Cell 11  |
-     * |110| 6    | Cell 6 and Cell 12  |
+     * |CH | Dec | Channels to convert |
+     * |---|-----|---------------------|
+     * |000| 0   | All Cells           |
+     * |001| 1   | Cell 1 and Cell 7   |
+     * |010| 2   | Cell 2 and Cell 8   |
+     * |011| 3   | Cell 3 and Cell 9   |
+     * |100| 4   | Cell 4 and Cell 10  |
+     * |101| 5   | Cell 5 and Cell 11  |
+     * |110| 6   | Cell 6 and Cell 12  |
      */
     enum CellChannel : std::uint16_t {
         CH_ALL           = 0b000,
@@ -122,15 +124,15 @@ public:
     /**
      * @brief AUX Channels to convert
      *
-     * |CHG | Dec  | Channels to convert  |
-     * |----|------|----------------------|
-     * |000 | 0    | All GPIOS and 2nd Ref|
-     * |001 | 1    | GPIO 1               |
-     * |010 | 2    | GPIO 2               |
-     * |011 | 3    | GPIO 3               |
-     * |100 | 4    | GPIO 4               |
-     * |101 | 5    | GPIO 5               |
-     * |110 | 6    | Vref2                |
+     * |CHG | Dec | Channels to convert  |
+     * |----|-----|----------------------|
+     * |000 | 0   | All GPIOS and 2nd Ref|
+     * |001 | 1   | GPIO 1               |
+     * |010 | 2   | GPIO 2               |
+     * |011 | 3   | GPIO 3               |
+     * |100 | 4   | GPIO 4               |
+     * |101 | 5   | GPIO 5               |
+     * |110 | 6   | Vref2                |
      */
     enum AuxChannel : std::uint16_t {
         CHG_ALL   = 0b000,
@@ -145,13 +147,13 @@ public:
     /**
      * @brief Status Group to select
      *
-     * |CHST| Dec  |  Status Group    |
-     * |----|------|------------------|
-     * |000 | 0    | OC, ITMP, VA, VD |
-     * |001 | 1    | SOC              |
-     * |010 | 2    | ITMP             |
-     * |011 | 3    | VA               |
-     * |100 | 4    | VD               |
+     * |CHST| Dec |  Status Group    |
+     * |----|-----|------------------|
+     * |000 | 0   | OC, ITMP, VA, VD |
+     * |001 | 1   | SOC              |
+     * |010 | 2   | ITMP             |
+     * |011 | 3   | VA               |
+     * |100 | 4   | VD               |
      */
     enum StatusGroup : std::uint16_t {
         CHST_ALL  = 0b000,
@@ -164,10 +166,10 @@ public:
     /**
      * @brief Self-Test mode selection
      *
-     * |ST| Dec  | Self-Test Mode |
-     * |--|------|----------------|
-     * |01| 1    | Self-Test 1    |
-     * |10| 2    | Self-Test 2    |
+     * |ST| Dec | Self-Test Mode |
+     * |--|-----|----------------|
+     * |01| 1   | Self-Test 1    |
+     * |10| 2   | Self-Test 2    |
      */
     enum SelfTestMode : std::uint16_t {
         ST_SELF_TEST_1 = (0b01 << STPos),
@@ -203,10 +205,12 @@ public:
     };
 
     //Methods
-    explicit LTC68041(byte pCS = 10, float tempOffset = 0.0);
+    LTC6804(byte pCS, float tempOffset = 0.0);
+    explicit LTC6804(std::uint16_t addr, byte pCS, float tempOffset = 0.0);
     void initSPI(byte pinMOSI, byte pinMISO, byte pinCLK);
     void destroySPI();
     void wakeup_idle() const;
+
     bool cfgRead();
     void cfgWrite();
     void cfgSetVUV(const float Undervoltage);
@@ -294,7 +298,6 @@ private:
          * Configuration register 5 discharge cell bitmask.
          */
         CFG5_DCC_MSK        = 0x0F,
-
         CFG5_DCTO_MSK       = 0xF0,
 
         /**
@@ -306,7 +309,6 @@ private:
          * Multiplexer Self-Test ResultRead: 0 -> Multiplexer Passed Self Test 1 -> Multiplexer Failed Self Test
          */
         STBR5_MUXFAIL_MSK   = 0x02,
-
         STBR5_REV_MSK       = 0xF0,
     };
 
@@ -423,19 +425,32 @@ private:
     /**
      * @brief ADC Conversion Mode
      *
-     * |MD| Dec  |          ADC Conversion Mode                |
-     * |--|------|---------------------|-----------------------|
-     * |  |      | ADCOPT(CFGR0[0]) = 0| ADCOPT(CFGR0[0]) = 1  |
-     * |--|------|---------------------|-----------------------|
-     * |01| 1    | 27kHz Mode (Fast)   | 14kHz Mode            |
-     * |10| 2    | 7kHz Mode (Normal)  | 3kHz Mode             |
-     * |11| 3    | 26Hz Mode (Filtered)| 2kHz Mode             |
+     * |MD| Dec |          ADC Conversion Mode                |
+     * |--|-----|---------------------|-----------------------|
+     * |  |     | ADCOPT(CFGR0[0]) = 0| ADCOPT(CFGR0[0]) = 1  |
+     * |--|-----|---------------------|-----------------------|
+     * |01| 1   | 27kHz Mode (Fast)   | 14kHz Mode            |
+     * |10| 2   | 7kHz Mode (Normal)  | 3kHz Mode             |
+     * |11| 3   | 26Hz Mode (Filtered)| 2kHz Mode             |
      */
     enum ADCMode : std::uint16_t {
         MD_FAST     = (0b01 << MDPos),
         MD_NORMAL   = (0b10 << MDPos),
         MD_FILTERED = (0b11 << MDPos),
     };
+
+    /**
+     * @brief Address Mode
+     * 
+     * |AM| Address Mode |
+     * |--|--------------|
+     * |0 | Broadcast    |
+     * |1 | Addressed    |
+     */
+    enum AddressMode : std::uint16_t {
+        AM_BROADCAST = (0b0 << ADDRCMDPos),
+        AM_ADDRESSED = (0b1 << ADDRCMDPos),
+    }
 
     /**
      * @brief Register map of internal register groups
@@ -457,6 +472,8 @@ private:
     
     float offsetTemp;		                //Offset of temperaturemeasurement
 
+    AddressMode am;
+    std::uint16_t address;
     ADCMode md;
     byte pinCS;		//ChipSelectPin
     Registers regs;
