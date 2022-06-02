@@ -19,7 +19,8 @@
 #define DEBUG_PRINTLN(...)
 #endif
 
-static LTC68041 LTC = LTC68041(D8);
+//static LTC6804 LTC = LTC6804(D8);
+static LTC6804 LTC = LTC6804(0x00, D8);
 
 constexpr unsigned long MASTER_TIMEOUT = 5000;
 constexpr unsigned long LTC_CHECK_INTERVAL = 1000;
