@@ -280,10 +280,10 @@ void publish_mqtt_values(std::bitset<12> &balance_bits) {
         }
     }
 
-    float module_voltage = LTC.getStatusVoltage(LTC68041::CHST_SOC);
+    float module_voltage = LTC.getStatusVoltage(LTC6804::CHST_SOC);
     client.publish((module_topic + "/module_voltage").c_str(), String(module_voltage).c_str(), true);
-    float raw_voltage_module_temp_1 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO1);
-    float raw_voltage_module_temp_2 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO2);
+    float raw_voltage_module_temp_1 = LTC.getAuxVoltage(LTC6804::AuxChannel::CHG_GPIO1);
+    float raw_voltage_module_temp_2 = LTC.getAuxVoltage(LTC6804::AuxChannel::CHG_GPIO2);
     float module_temp_1 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_1);
     float module_temp_2 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_2);
     client.publish((module_topic + "/module_temps").c_str(),
@@ -292,14 +292,14 @@ void publish_mqtt_values(std::bitset<12> &balance_bits) {
     client.publish((module_topic + "/chip_temp").c_str(), String(chip_temp).c_str(), true);
 
     if (is_total_voltage_measurer) {
-        float raw_voltage = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO3);
+        float raw_voltage = LTC.getAuxVoltage(LTC6804::AuxChannel::CHG_GPIO3);
         const float multiplier_hv = 201.0f;
         float total_system_voltage = raw_voltage * multiplier_hv;
         client.publish((module_topic + "/total_system_voltage").c_str(), String(total_system_voltage).c_str(), true);
     }
 
     if (is_total_current_measurer) {
-        float raw_voltage = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO3);
+        float raw_voltage = LTC.getAuxVoltage(LTC6804::AuxChannel::CHG_GPIO3);
         raw_voltage -= 2.5f; // offset
         const float multiplier_current = 24.0f; // 20 ideal
 //        const float correction_offset = 0.0f;
@@ -343,7 +343,7 @@ void set_LTC(std::bitset<12> &balance_bits) {
     LTC.cfgWrite();
     //Start different Analog-Digital-Conversions in the Chip
 
-    LTC.startCellConv(LTC68041::DCP_DISABLED);
+    LTC.startCellConv(LTC6804::DCP_DISABLED);
     delay(5); //Wait until conversion is finished
     LTC.startAuxConv();
     delay(5); //Wait until conversion is finished
@@ -353,7 +353,7 @@ void set_LTC(std::bitset<12> &balance_bits) {
     //Read the raw values into the controller
     std::array<float, 6> voltages{};
     LTC.getCellVoltages(voltages,
-                        LTC68041::CH_ALL); // read all channel (2nd parameter default), use only 6 (size of array)
+                        LTC6804::CH_ALL); // read all channel (2nd parameter default), use only 6 (size of array)
     LTC.cfgRead();
 
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits

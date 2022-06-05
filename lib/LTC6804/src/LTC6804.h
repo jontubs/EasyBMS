@@ -450,7 +450,7 @@ private:
     enum AddressMode : std::uint16_t {
         AM_BROADCAST = (0b0 << ADDRCMDPos),
         AM_ADDRESSED = (0b1 << ADDRCMDPos),
-    }
+    };
 
     /**
      * @brief Register map of internal register groups
