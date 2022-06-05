@@ -39,7 +39,7 @@ LTC6804::LTC6804(byte pCS, float tempOffset)
  */
 LTC6804::LTC6804(std::uint16_t addr, byte pCS, float tempOffset)
   : offsetTemp(tempOffset),
-    am(AM_ADRESSED),
+    am(AM_ADDRESSED),
     address(addr << ADDRPos),
     md(MD_NORMAL),
     pinCS(pCS),
