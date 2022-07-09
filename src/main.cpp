@@ -348,11 +348,6 @@ void set_LTC(std::bitset<12> &balance_bits) {
     delay(5); //Wait until conversion is finished
     LTC.startStatusConv();
     delay(5); //Wait until conversion is finished
-
-    //Read the raw values into the controller
-    std::array<float, 6> voltages{};
-    LTC.getCellVoltages(voltages,
-                        LTC68041::CH_ALL); // read all channel (2nd parameter default), use only 6 (size of array)
     LTC.cfgRead();
 
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
@@ -362,6 +357,61 @@ void set_LTC(std::bitset<12> &balance_bits) {
     LTC.readAuxDbg();
     LTC.readCellsDbg();
 #endif
+}
+
+bool runTests()
+{
+    LTC.startCellConvTest(LTC68041::ST_SELF_TEST_1);
+    delay(5);
+
+    std::array<float, 12> cell_voltages_test{};
+    LTC.getCellVoltages(cell_voltages_test);
+
+    for(float pattern : cell_voltages_test)
+    {
+        Serial.print("Conversion Test results: ");
+        Serial.print(pattern);
+        Serial.print(", ");
+    }
+
+    Serial.println();
+
+    LTC.startOpenWireCheck(LTC68041::PUP_PULL_UP, LTC68041::DCP_DISABLED);
+    delay(5);
+    LTC.startOpenWireCheck(LTC68041::PUP_PULL_UP, LTC68041::DCP_DISABLED);
+    delay(5);
+
+    std::array<float, 12> cell_voltages_pup{};
+    LTC.getCellVoltages(cell_voltages_pup);
+
+    LTC.startOpenWireCheck(LTC68041::PUP_PULL_DOWN, LTC68041::DCP_DISABLED);
+    delay(5);
+    LTC.startOpenWireCheck(LTC68041::PUP_PULL_DOWN, LTC68041::DCP_DISABLED);
+    delay(5);
+
+    std::array<float, 12> cell_voltages_pdown{};
+    LTC.getCellVoltages(cell_voltages_pdown);
+
+    if(cell_voltages_pup[0] < 0.0001) {
+        Serial.println("C0 is open");
+        return false;
+    }
+
+    if(cell_voltages_pdown[11] < 0.0001) {
+        Serial.println("C12 is open");
+        return false;
+    }
+
+    for(int i = 1; i < 12; i++) {
+        if((cell_voltages_pup[i] - cell_voltages_pdown[i]) < -0.4) {
+            Serial.print("C");
+            Serial.print(i);
+            Serial.println(" is open");
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // the loop function runs over and over again forever
@@ -390,6 +440,8 @@ void loop() {
             }
         }
         set_LTC(balance_bits);
+
+        //runTests();
 
         publish_mqtt_values(balance_bits);
     }
