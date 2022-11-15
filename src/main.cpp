@@ -23,6 +23,7 @@ static LTC68041 LTC = LTC68041(D8);
 
 constexpr unsigned long MASTER_TIMEOUT = 5000;
 constexpr unsigned long LTC_CHECK_INTERVAL = 1000;
+constexpr unsigned long BLINK_TIME = 5000;
 
 String hostname;
 String mac_topic;
@@ -44,6 +45,7 @@ std::array<unsigned long, 12> cells_to_balance_interval{};
 
 unsigned long last_ltc_check = 0;
 unsigned long last_connection = 0;
+unsigned long last_blink_time = 0;
 unsigned long long last_master_uptime = 0;
 
 bool led_builtin_state = false;
@@ -114,7 +116,7 @@ String cell_name_from_id(int cell_id) {
     if(battery_type == BatteryType::meb8s) {
         if (cell_number <= 4) {
             // do nothing, cell number is correct
-        } else if (cell_number > 4 && cell_number <= 8) {
+        } else if (cell_number <= 8) {
             // These cells dont exist on 8s batteries
             return "undefined";
         } else {
@@ -196,12 +198,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
             cells_to_balance_interval.at(cell_id) = balance_time;
         }
     } else if (topic_string == mac_topic + "/blink") {
-        for (int i = 0; i < 50; i++) {
-            digitalWrite(LED_BUILTIN, HIGH);
-            delay(50);
-            digitalWrite(LED_BUILTIN, LOW);
-            delay(50);
-        }
+        last_blink_time = millis();
     } else if (topic_string == mac_topic + "/set_config") {
         String module_number_string = payload_string.substring(0, payload_string.indexOf(","));
         String total_voltage_measurer_string = payload_string.substring(payload_string.indexOf(",") + 1,
@@ -425,15 +422,14 @@ void loop() {
     last_connection = millis();
     client.loop();
 
-    unsigned long uptime_millis = millis();
-    if (uptime_millis - last_ltc_check > LTC_CHECK_INTERVAL) {
-        last_ltc_check = uptime_millis;
+    if (millis() - last_ltc_check > LTC_CHECK_INTERVAL) {
+        last_ltc_check = millis();
         /*
          * set LTC balance bits
          */
         std::bitset<12> balance_bits{};
         for (size_t i = 0; i < cells_to_balance_start.size(); ++i) {
-            if (uptime_millis - cells_to_balance_start.at(i) <= cells_to_balance_interval.at(i)) {
+            if (millis() - cells_to_balance_start.at(i) <= cells_to_balance_interval.at(i)) {
                 balance_bits.set(i, true);
             } else if (cells_to_balance_interval.at(i) > 0) {
                 cells_to_balance_interval.at(i) = 0;
@@ -444,5 +440,12 @@ void loop() {
         //runTests();
 
         publish_mqtt_values(balance_bits);
+    }
+    if (millis() - last_blink_time > BLINK_TIME) {
+        if ((millis() - last_blink_time) % 100 < 50) {
+            digitalWrite(LED_BUILTIN, HIGH);
+        } else {
+            digitalWrite(LED_BUILTIN, LOW);
+        }
     }
 }
