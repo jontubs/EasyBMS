@@ -323,6 +323,7 @@ void set_LTC(std::bitset<12> &balance_bits) {
 //        DEBUG_PRINTLN("SPI lost");
     }
 
+    LTC.cfgSetRefOn(true);
     /*
      * set LTC config
      */

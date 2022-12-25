@@ -9,7 +9,7 @@ https://github.com/jontubs/EasyBMS
 ***********************************************************/
 
 
-#include <stdint.h>
+#include <cstdint>
 #include "LTC6804.h"
 
 
@@ -932,7 +932,7 @@ void LTC68041::readStatusDbg()
 
 void LTC68041::readAuxDbg()
 {
-    std::array<float, AUXNUM> auxVoltage;	//Voltage of GPIOS and VREF2 in Volt
+    std::array<float, AUXNUM> auxVoltage{};	//Voltage of GPIOS and VREF2 in Volt
 
     auxVoltage[0] = getAuxVoltage(CHG_GPIO1);
     auxVoltage[1] = getAuxVoltage(CHG_GPIO2);
@@ -981,7 +981,7 @@ Reads and parses the LTC6804 cell voltage registers and returns some additional 
 *********************************************************************************************************/
 void LTC68041::readCellsDbg() // Array of the parsed cell codes
 {
-    std::array<float, 12> cellVoltages;
+    std::array<float, 12> cellVoltages{};
 
     getCellVoltages(cellVoltages);
 

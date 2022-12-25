@@ -13,6 +13,10 @@ constexpr char mqtt_server[] = "mosquitto.local";
 constexpr uint16_t mqtt_port = 8883;
 constexpr char mqtt_username[] = "mosquitto_user";
 constexpr char mqtt_password[] = "mosquitto_pass";
+/* anonymous login:
+constexpr char *mqtt_username = nullptr;
+constexpr char *mqtt_password = nullptr;
+*/
 
 const char mqtt_cert[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
