@@ -442,7 +442,7 @@ void loop() {
 
         publish_mqtt_values(balance_bits);
     }
-    if (millis() - last_blink_time > BLINK_TIME) {
+    if (millis() - last_blink_time < BLINK_TIME) {
         if ((millis() - last_blink_time) % 100 < 50) {
             digitalWrite(LED_BUILTIN, HIGH);
         } else {
