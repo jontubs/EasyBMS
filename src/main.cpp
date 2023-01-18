@@ -48,6 +48,8 @@ unsigned long last_connection = 0;
 unsigned long last_blink_time = 0;
 unsigned long long last_master_uptime = 0;
 
+unsigned long pec15_error_count = 0;
+
 bool led_builtin_state = false;
 
 // connect to wifi
@@ -113,7 +115,7 @@ void reconnect() {
 
 String cell_name_from_id(int cell_id) {
     int cell_number = cell_id + 1;
-    if(battery_type == BatteryType::meb8s) {
+    if (battery_type == BatteryType::meb8s) {
         if (cell_number <= 4) {
             // do nothing, cell number is correct
         } else if (cell_number <= 8) {
@@ -127,22 +129,19 @@ String cell_name_from_id(int cell_id) {
     return String(cell_number);
 }
 
-bool string_is_uint(String myString)
-{
-  for(uint16_t i = 0; i < myString.length(); i++)
-  {
-    if (!isDigit(myString[i]))
-    {
-        return false;
+bool string_is_uint(String myString) {
+    for (uint16_t i = 0; i < myString.length(); i++) {
+        if (!isDigit(myString[i])) {
+            return false;
+        }
     }
-  }
 
-  return true;
+    return true;
 }
 
 int cell_id_from_name(String cell_name) {
     // cell number needs to be an unsigned integer
-    if(!string_is_uint(cell_name)) {
+    if (!string_is_uint(cell_name)) {
         return -1;
     }
 
@@ -244,9 +243,9 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
     LTC.initSPI(D7, D6, D5); //Initialize LTC6804 hardware
 
-    #if SSL_ENABLED
+#if SSL_ENABLED
     espClient.setTrustAnchors(&mqtt_cert_store);
-    #endif
+#endif
 
     client.setCallback(callback);
 }
@@ -257,6 +256,7 @@ float raw_voltage_to_real_module_temp(float raw_voltage) {
 
 void publish_mqtt_values(std::bitset<12> &balance_bits) {
     client.publish((module_topic + "/uptime").c_str(), String(millis()).c_str(), true);
+    client.publish((module_topic + "/pec15_error_count").c_str(), String(pec15_error_count).c_str(), true);
 
     std::array<float, 12> cell_voltages{};
     LTC.getCellVoltages(cell_voltages);
@@ -346,7 +346,9 @@ void set_LTC(std::bitset<12> &balance_bits) {
     delay(5); //Wait until conversion is finished
     LTC.startStatusConv();
     delay(5); //Wait until conversion is finished
-    LTC.cfgRead();
+    if (!LTC.cfgRead()) {
+        pec15_error_count++;
+    }
 
     //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
 #ifdef DEBUG
@@ -390,18 +392,18 @@ bool runTests()
     std::array<float, 12> cell_voltages_pdown{};
     LTC.getCellVoltages(cell_voltages_pdown);
 
-    if(cell_voltages_pup[0] < 0.0001) {
+    if (cell_voltages_pup[0] < 0.0001) {
         Serial.println("C0 is open");
         return false;
     }
 
-    if(cell_voltages_pdown[11] < 0.0001) {
+    if (cell_voltages_pdown[11] < 0.0001) {
         Serial.println("C12 is open");
         return false;
     }
 
-    for(int i = 1; i < 12; i++) {
-        if((cell_voltages_pup[i] - cell_voltages_pdown[i]) < -0.4) {
+    for (int i = 1; i < 12; i++) {
+        if ((cell_voltages_pup[i] - cell_voltages_pdown[i]) < -0.4) {
             Serial.print("C");
             Serial.print(i);
             Serial.println(" is open");
