@@ -1,3 +1,4 @@
+#include <ESP8266httpUpdate.h>
 #include <ESP8266WiFi.h>
 #include <LTC6804.h>
 #include <LTC6804.cpp>
@@ -113,8 +114,8 @@ void reconnect() {
     }
 }
 
-String cell_name_from_id(int cell_id) {
-    int cell_number = cell_id + 1;
+String cell_name_from_id(size_t cell_id) {
+    size_t cell_number = cell_id + 1;
     if (battery_type == BatteryType::meb8s) {
         if (cell_number <= 4) {
             // do nothing, cell number is correct
@@ -129,17 +130,11 @@ String cell_name_from_id(int cell_id) {
     return String(cell_number);
 }
 
-bool string_is_uint(String myString) {
-    for (uint16_t i = 0; i < myString.length(); i++) {
-        if (!isDigit(myString[i])) {
-            return false;
-        }
-    }
-
-    return true;
+bool string_is_uint(const String &myString) {
+    return std::all_of(myString.begin(), myString.end(), isDigit);
 }
 
-int cell_id_from_name(String cell_name) {
+int cell_id_from_name(const String &cell_name) {
     // cell number needs to be an unsigned integer
     if (!string_is_uint(cell_name)) {
         return -1;
@@ -212,6 +207,31 @@ void callback(char *topic, byte *payload, unsigned int length) {
         if (payload_string == "1") {
             EspClass::restart();
         }
+    } else if (topic_string == mac_topic + "/ota") {
+        WiFiClientSecure client_secure;
+        client_secure.setTrustAnchors(&cert);
+        client_secure.setTimeout(60);
+        ESPhttpUpdate.setLedPin(LED_BUILTIN, HIGH);
+        switch (ESPhttpUpdate.update(client_secure, String("https://") + ota_server + payload_string)) {
+            case HTTP_UPDATE_FAILED: {
+                String error_string = String("HTTP_UPDATE_FAILED Error (");
+                error_string += ESPhttpUpdate.getLastError();
+                error_string += "): ";
+                error_string += ESPhttpUpdate.getLastErrorString();
+                error_string += "\n";
+                DEBUG_PRINTLN(error_string);
+                client.publish((mac_topic + "/ota_ret").c_str(), error_string.c_str());
+            }
+                break;
+            case HTTP_UPDATE_NO_UPDATES:
+                DEBUG_PRINTLN("HTTP_UPDATE_NO_UPDATES");
+                client.publish((mac_topic + "/ota_ret").c_str(), "HTTP_UPDATE_NO_UPDATES");
+                break;
+            case HTTP_UPDATE_OK:
+                DEBUG_PRINTLN("HTTP_UPDATE_OK");
+                client.publish((mac_topic + "/ota_ret").c_str(), "HTTP_UPDATE_OK");
+                break;
+        }
     }
 }
 
@@ -259,7 +279,9 @@ void publish_mqtt_values(std::bitset<12> &balance_bits) {
     client.publish((module_topic + "/pec15_error_count").c_str(), String(pec15_error_count).c_str(), true);
 
     std::array<float, 12> cell_voltages{};
-    LTC.getCellVoltages(cell_voltages);
+    if (!LTC.getCellVoltages(cell_voltages)) {
+        pec15_error_count++;
+    }
     for (size_t i = 0; i < cell_voltages.size(); i++) {
         String cell_name = cell_name_from_id(i);
         if (cell_name == "undefined") {
@@ -359,22 +381,20 @@ void set_LTC(std::bitset<12> &balance_bits) {
 #endif
 }
 
-bool runTests()
-{
+bool runTests() {
     LTC.startCellConvTest(LTC68041::ST_SELF_TEST_1);
     delay(5);
 
     std::array<float, 12> cell_voltages_test{};
     LTC.getCellVoltages(cell_voltages_test);
 
-    for(float pattern : cell_voltages_test)
-    {
-        Serial.print("Conversion Test results: ");
-        Serial.print(pattern);
-        Serial.print(", ");
+    for (float pattern: cell_voltages_test) {
+        DEBUG_PRINT("Conversion Test results: ");
+        DEBUG_PRINT(pattern);
+        DEBUG_PRINT(", ");
     }
 
-    Serial.println();
+    DEBUG_PRINTLN();
 
     LTC.startOpenWireCheck(LTC68041::PUP_PULL_UP, LTC68041::DCP_DISABLED);
     delay(5);
@@ -393,20 +413,20 @@ bool runTests()
     LTC.getCellVoltages(cell_voltages_pdown);
 
     if (cell_voltages_pup[0] < 0.0001) {
-        Serial.println("C0 is open");
+        DEBUG_PRINTLN("C0 is open");
         return false;
     }
 
     if (cell_voltages_pdown[11] < 0.0001) {
-        Serial.println("C12 is open");
+        DEBUG_PRINTLN("C12 is open");
         return false;
     }
 
     for (int i = 1; i < 12; i++) {
         if ((cell_voltages_pup[i] - cell_voltages_pdown[i]) < -0.4) {
-            Serial.print("C");
-            Serial.print(i);
-            Serial.println(" is open");
+            DEBUG_PRINT("C");
+            DEBUG_PRINT(i);
+            DEBUG_PRINTLN(" is open");
             return false;
         }
     }
