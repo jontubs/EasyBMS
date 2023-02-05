@@ -30,9 +30,6 @@ String hostname;
 String mac_topic;
 String module_topic;
 
-bool is_total_voltage_measurer = false;
-bool is_total_current_measurer = false;
-
 #if SSL_ENABLED
 WiFiClientSecure espClient;
 #else
@@ -200,8 +197,6 @@ void callback(char *topic, byte *payload, unsigned int length) {
                                                                         payload_string.lastIndexOf(","));
         String total_current_measurer_string = payload_string.substring(payload_string.lastIndexOf(",") + 1);
         module_topic = String("esp-module/") + module_number_string;
-        is_total_voltage_measurer = total_voltage_measurer_string.equals("1");
-        is_total_current_measurer = total_current_measurer_string.equals("1");
         client.disconnect();
         reconnect();
     } else if (topic_string == mac_topic + "/restart") {
@@ -313,23 +308,6 @@ void publish_mqtt_values(std::bitset<12> &balance_bits) {
                    (String(module_temp_1) + "," + String(module_temp_2)).c_str(), true);
     float chip_temp = LTC.getStatusVoltage(LTC.StatusGroup::CHST_ITMP);
     client.publish((module_topic + "/chip_temp").c_str(), String(chip_temp).c_str(), true);
-
-    if (is_total_voltage_measurer) {
-        float raw_voltage = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO3);
-        const float multiplier_hv = 201.0f;
-        float total_system_voltage = raw_voltage * multiplier_hv;
-        client.publish((module_topic + "/total_system_voltage").c_str(), String(total_system_voltage).c_str(), true);
-    }
-
-    if (is_total_current_measurer) {
-        float raw_voltage = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO3);
-        raw_voltage -= 2.5f; // offset
-        const float multiplier_current = 24.0f; // 20 ideal
-//        const float correction_offset = 0.0f;
-        float total_system_current = raw_voltage * multiplier_current;
-        client.publish((module_topic + "/total_system_current").c_str(),
-                       (String(millis()) + "," + String(total_system_current)).c_str(), true);
-    }
 }
 
 void set_LTC(std::bitset<12> &balance_bits) {
