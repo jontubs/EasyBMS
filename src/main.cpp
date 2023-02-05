@@ -100,6 +100,7 @@ void reconnect() {
             client.subscribe((mac_topic + "/blink").c_str());
             client.subscribe((mac_topic + "/set_config").c_str());
             client.subscribe((mac_topic + "/restart").c_str());
+            client.subscribe((mac_topic + "/ota").c_str());
         } else {
             DEBUG_PRINT("failed, rc=");
             DEBUG_PRINT(client.state());
@@ -208,6 +209,10 @@ void callback(char *topic, byte *payload, unsigned int length) {
             EspClass::restart();
         }
     } else if (topic_string == mac_topic + "/ota") {
+        client.publish((mac_topic + "/ota_start").c_str(),
+                       (String("ota started [") + payload_string + "] (" + millis() + ")").c_str());
+        client.publish((mac_topic + "/ota_url").c_str(),
+                       (String("https://") + ota_server + payload_string).c_str());
         WiFiClientSecure client_secure;
         client_secure.setTrustAnchors(&cert);
         client_secure.setTimeout(60);
