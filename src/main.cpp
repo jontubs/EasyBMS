@@ -1,7 +1,7 @@
 #include <ESP8266httpUpdate.h>
 #include <ESP8266WiFi.h>
 #include <LTC6804.h>
-#include <LTC6804.cpp>
+#include <LTC6804.cpp> // used for template functions
 #include <lwip/dns.h>
 #include <PubSubClient.h>
 
@@ -61,7 +61,7 @@ void connectWifi() {
     WiFi.hostname(hostname);
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
+        delay(100);
         DEBUG_PRINT(".");
     }
     DEBUG_PRINTLN("");
@@ -94,6 +94,7 @@ void reconnect() {
             for (int i = 0; i < 12; ++i) {
                 client.subscribe((module_topic + "/cell/" + (i + 1) + "/balance_request").c_str());
             }
+            client.subscribe((module_topic + "/read_accurate").c_str());
             client.subscribe((mac_topic + "/blink").c_str());
             client.subscribe((mac_topic + "/set_config").c_str());
             client.subscribe((mac_topic + "/restart").c_str());
@@ -158,6 +159,110 @@ int cell_id_from_name(const String &cell_name) {
     return cell_number - 1;
 }
 
+void set_balance_bits(std::bitset<12> &balance_bits) {
+    for (size_t i = 0; i < cells_to_balance_start.size(); ++i) {
+        if (millis() - cells_to_balance_start.at(i) <= cells_to_balance_interval.at(i)) {
+            balance_bits.set(i, true);
+        } else if (cells_to_balance_interval.at(i) > 0) {
+            cells_to_balance_interval.at(i) = 0;
+        }
+    }
+}
+
+void set_LTC(std::bitset<12> &balance_bits) {
+    /*
+     * check LTC SPI
+     */
+#ifdef DEBUG
+    if (LTC.checkSPI(true)) {
+#else
+        if (LTC.checkSPI(false)) {
+#endif
+        digitalWrite(D1, HIGH);
+//        DEBUG_PRINTLN();
+//        DEBUG_PRINTLN("SPI ok");
+    } else {
+        digitalWrite(D1, LOW);
+//        DEBUG_PRINTLN();
+//        DEBUG_PRINTLN("SPI lost");
+    }
+
+    LTC.cfgSetRefOn(true);
+    /*
+     * set LTC config
+     */
+    LTC.cfgSetVUV(3.1);
+    LTC.cfgSetVOV(4.2);
+
+    if (balance_bits.any()) {
+        digitalWrite(D2, HIGH);
+    } else {
+        digitalWrite(D2, LOW);
+    }
+    LTC.cfgSetDCC(balance_bits);
+
+    LTC.cfgWrite();
+    //Start different Analog-Digital-Conversions in the Chip
+
+    LTC.startCellConv(LTC68041::DCP_DISABLED);
+    delay(5); //Wait until conversion is finished
+    LTC.startAuxConv();
+    delay(5); //Wait until conversion is finished
+    LTC.startStatusConv();
+    delay(5); //Wait until conversion is finished
+    if (!LTC.cfgRead()) {
+        pec15_error_count++;
+    }
+
+    //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
+#ifdef DEBUG
+    LTC.readCfgDbg();
+    LTC.readStatusDbg();
+    LTC.readAuxDbg();
+    LTC.readCellsDbg();
+#endif
+}
+
+float raw_voltage_to_real_module_temp(float raw_voltage) {
+    return 32.0513f * raw_voltage - 23.0769f;
+}
+
+void publish_mqtt_values(std::bitset<12> &balance_bits, const String &topic) {
+    client.publish((module_topic + "/uptime").c_str(), String(millis()).c_str(), true);
+    client.publish((module_topic + "/pec15_error_count").c_str(), String(pec15_error_count).c_str(), true);
+
+    std::array<float, 12> cell_voltages{};
+    if (!LTC.getCellVoltages(cell_voltages)) {
+        pec15_error_count++;
+    }
+    for (size_t i = 0; i < cell_voltages.size(); i++) {
+        String cell_name = cell_name_from_id(i);
+        if (cell_name == "undefined") {
+            continue;
+        }
+        client.publish((topic + "/cell/" + cell_name + "/voltage").c_str(),
+                       String(cell_voltages[i], 3).c_str(), true);
+//        client.publish((module_topic + "/cell/" + cell_name + "/balance_time").c_str(),
+//                       String(cells_to_balance[i]).c_str(), true);
+        if (balance_bits.test(i)) {
+            client.publish((module_topic + "/cell/" + cell_name + "/is_balancing").c_str(), "1", true);
+        } else {
+            client.publish((module_topic + "/cell/" + cell_name + "/is_balancing").c_str(), "0", true);
+        }
+    }
+
+    float module_voltage = LTC.getStatusVoltage(LTC68041::CHST_SOC);
+    client.publish((topic + "/module_voltage").c_str(), String(module_voltage).c_str(), true);
+    float raw_voltage_module_temp_1 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO1);
+    float raw_voltage_module_temp_2 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO2);
+    float module_temp_1 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_1);
+    float module_temp_2 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_2);
+    client.publish((topic + "/module_temps").c_str(),
+                   (String(module_temp_1) + "," + String(module_temp_2)).c_str(), true);
+    float chip_temp = LTC.getStatusVoltage(LTC.StatusGroup::CHST_ITMP);
+    client.publish((topic + "/chip_temp").c_str(), String(chip_temp).c_str(), true);
+}
+
 void callback(char *topic, byte *payload, unsigned int length) {
     String topic_string = String(topic);
     String payload_string = String();
@@ -188,6 +293,22 @@ void callback(char *topic, byte *payload, unsigned int length) {
             unsigned long balance_time = std::stoul(payload_string.c_str());
             cells_to_balance_start.at(cell_id) = millis();
             cells_to_balance_interval.at(cell_id) = balance_time;
+        }
+    } else if (topic_string == module_topic + "/read_accurate") {
+        if (payload_string == "1") {
+            last_ltc_check = millis();
+            std::bitset<12> balance_bits{};
+            set_balance_bits(balance_bits);
+            WiFi.forceSleepBegin();
+            delay(1);
+            set_LTC(balance_bits);
+            WiFi.forceSleepWake();
+            delay(1);
+            while (WiFi.status() != WL_CONNECTED) {
+                delay(100);
+            }
+            reconnect();
+            publish_mqtt_values(balance_bits, module_topic + "/accurate");
         }
     } else if (topic_string == mac_topic + "/blink") {
         last_blink_time = millis();
@@ -270,100 +391,6 @@ void callback(char *topic, byte *payload, unsigned int length) {
     client.setCallback(callback);
 }
 
-float raw_voltage_to_real_module_temp(float raw_voltage) {
-    return 32.0513f * raw_voltage - 23.0769f;
-}
-
-void publish_mqtt_values(std::bitset<12> &balance_bits) {
-    client.publish((module_topic + "/uptime").c_str(), String(millis()).c_str(), true);
-    client.publish((module_topic + "/pec15_error_count").c_str(), String(pec15_error_count).c_str(), true);
-
-    std::array<float, 12> cell_voltages{};
-    if (!LTC.getCellVoltages(cell_voltages)) {
-        pec15_error_count++;
-    }
-    for (size_t i = 0; i < cell_voltages.size(); i++) {
-        String cell_name = cell_name_from_id(i);
-        if (cell_name == "undefined") {
-            continue;
-        }
-        client.publish((module_topic + "/cell/" + cell_name + "/voltage").c_str(),
-                       String(cell_voltages[i], 3).c_str(), true);
-//        client.publish((module_topic + "/cell/" + cell_name + "/balance_time").c_str(),
-//                       String(cells_to_balance[i]).c_str(), true);
-        if (balance_bits.test(i)) {
-            client.publish((module_topic + "/cell/" + cell_name + "/is_balancing").c_str(), "1", true);
-        } else {
-            client.publish((module_topic + "/cell/" + cell_name + "/is_balancing").c_str(), "0", true);
-        }
-    }
-
-    float module_voltage = LTC.getStatusVoltage(LTC68041::CHST_SOC);
-    client.publish((module_topic + "/module_voltage").c_str(), String(module_voltage).c_str(), true);
-    float raw_voltage_module_temp_1 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO1);
-    float raw_voltage_module_temp_2 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO2);
-    float module_temp_1 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_1);
-    float module_temp_2 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_2);
-    client.publish((module_topic + "/module_temps").c_str(),
-                   (String(module_temp_1) + "," + String(module_temp_2)).c_str(), true);
-    float chip_temp = LTC.getStatusVoltage(LTC.StatusGroup::CHST_ITMP);
-    client.publish((module_topic + "/chip_temp").c_str(), String(chip_temp).c_str(), true);
-}
-
-void set_LTC(std::bitset<12> &balance_bits) {
-    /*
-     * check LTC SPI
-     */
-#ifdef DEBUG
-    if (LTC.checkSPI(true)) {
-#else
-        if (LTC.checkSPI(false)) {
-#endif
-        digitalWrite(D1, HIGH);
-//        DEBUG_PRINTLN();
-//        DEBUG_PRINTLN("SPI ok");
-    } else {
-        digitalWrite(D1, LOW);
-//        DEBUG_PRINTLN();
-//        DEBUG_PRINTLN("SPI lost");
-    }
-
-    LTC.cfgSetRefOn(true);
-    /*
-     * set LTC config
-     */
-    LTC.cfgSetVUV(3.1);
-    LTC.cfgSetVOV(4.2);
-
-    if (balance_bits.any()) {
-        digitalWrite(D2, HIGH);
-    } else {
-        digitalWrite(D2, LOW);
-    }
-    LTC.cfgSetDCC(balance_bits);
-
-    LTC.cfgWrite();
-    //Start different Analog-Digital-Conversions in the Chip
-
-    LTC.startCellConv(LTC68041::DCP_DISABLED);
-    delay(5); //Wait until conversion is finished
-    LTC.startAuxConv();
-    delay(5); //Wait until conversion is finished
-    LTC.startStatusConv();
-    delay(5); //Wait until conversion is finished
-    if (!LTC.cfgRead()) {
-        pec15_error_count++;
-    }
-
-    //Print the clear text values cellVoltage, gpioVoltage, Undervoltage Bits, Overvoltage Bits
-#ifdef DEBUG
-    LTC.readCfgDbg();
-    LTC.readStatusDbg();
-    LTC.readAuxDbg();
-    LTC.readCellsDbg();
-#endif
-}
-
 bool runTests() {
     LTC.startCellConvTest(LTC68041::ST_SELF_TEST_1);
     delay(5);
@@ -430,22 +457,13 @@ void loop() {
 
     if (millis() - last_ltc_check > LTC_CHECK_INTERVAL) {
         last_ltc_check = millis();
-        /*
-         * set LTC balance bits
-         */
         std::bitset<12> balance_bits{};
-        for (size_t i = 0; i < cells_to_balance_start.size(); ++i) {
-            if (millis() - cells_to_balance_start.at(i) <= cells_to_balance_interval.at(i)) {
-                balance_bits.set(i, true);
-            } else if (cells_to_balance_interval.at(i) > 0) {
-                cells_to_balance_interval.at(i) = 0;
-            }
-        }
+        set_balance_bits(balance_bits);
         set_LTC(balance_bits);
 
         //runTests();
 
-        publish_mqtt_values(balance_bits);
+        publish_mqtt_values(balance_bits, module_topic);
     }
     if (millis() - last_blink_time < BLINK_TIME) {
         if ((millis() - last_blink_time) % 100 < 50) {
