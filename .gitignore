@@ -3,6 +3,7 @@ CMakeListsPrivate.txt
 credentials.h
 config.h
 current_flash.txt
+include/version.h
 
 # Created by https://www.toptal.com/developers/gitignore/api/c,c++,python,clion+all,platformio,pycharm+all,visualstudiocode,cmake
 # Edit at https://www.toptal.com/developers/gitignore?templates=c,c++,python,clion+all,platformio,pycharm+all,visualstudiocode,cmake

@@ -6,6 +6,7 @@
 #include <PubSubClient.h>
 
 #include "config.h"
+#include "version.h"
 
 #define DEBUG
 #define SSL_ENABLED false
@@ -89,6 +90,8 @@ void reconnect() {
                 client.publish((mac_topic + "/available").c_str(), "undefined", true);
             }
             client.publish((mac_topic + "/module_topic").c_str(), module_topic.c_str(), true);
+            client.publish((mac_topic + "/version").c_str(), VERSION, true);
+            client.publish((mac_topic + "/build_timestamp").c_str(), BUILD_TIMESTAMP, true);
             // ... and resubscribe
             client.subscribe("master/uptime");
             for (int i = 0; i < 12; ++i) {
