@@ -11,6 +11,7 @@ constexpr char mqtt_server[] = "mosquitto.local";
 constexpr uint16_t mqtt_port = 1883;
 constexpr char mqtt_username[] = "mosquitto_user";
 constexpr char mqtt_password[] = "mosquitto_pass";
+constexpr bool use_display = true;
 
 constexpr char ota_server[] = "example.com";
 const char trustRoot[] PROGMEM = R"EOF(

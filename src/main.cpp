@@ -7,6 +7,9 @@
 
 #include "config.h"
 #include "version.h"
+#include "display.h"
+#include "soc.h"
+#include "Measurements.hpp"
 
 #define DEBUG
 #define SSL_ENABLED false
@@ -92,6 +95,27 @@ void reconnect() {
             client.publish((mac_topic + "/module_topic").c_str(), module_topic.c_str(), true);
             client.publish((mac_topic + "/version").c_str(), VERSION, true);
             client.publish((mac_topic + "/build_timestamp").c_str(), BUILD_TIMESTAMP, true);
+            client.publish((mac_topic + "/wifi").c_str(), WiFi.SSID().c_str(), true);
+            client.publish((mac_topic + "/ip").c_str(), WiFi.localIP().toString().c_str(), true);
+            client.publish((mac_topic + "/esp_sdk").c_str(), EspClass::getFullVersion().c_str(), true);
+            client.publish((mac_topic + "/cpu").c_str(), (
+                    String(EspClass::getChipId(), HEX) +
+                    " " +
+                    EspClass::getCpuFreqMHz() + " MHz"
+            ).c_str(), true);
+            client.publish((mac_topic + "/flash").c_str(), (
+                    String(EspClass::getFlashChipId(), HEX) +
+                    ", " +
+                    (EspClass::getFlashChipSize() / 1024 / 1024) +
+                    " of " +
+                    (EspClass::getFlashChipRealSize() / 1024 / 1024) +
+                    " MiB, Mode: " +
+                    EspClass::getFlashChipMode() +
+                    ", Speed: " +
+                    (EspClass::getFlashChipSpeed() / 1000 / 1000) +
+                    " MHz, Vendor: " +
+                    String(EspClass::getFlashChipVendorId(), HEX)
+            ).c_str(), true);
             // ... and resubscribe
             client.subscribe("master/uptime");
             for (int i = 0; i < 12; ++i) {
@@ -230,40 +254,69 @@ float raw_voltage_to_real_module_temp(float raw_voltage) {
     return 32.0513f * raw_voltage - 23.0769f;
 }
 
-void publish_mqtt_values(std::bitset<12> &balance_bits, const String &topic) {
-    client.publish((module_topic + "/uptime").c_str(), String(millis()).c_str(), true);
-    client.publish((module_topic + "/pec15_error_count").c_str(), String(pec15_error_count).c_str(), true);
-
+Measurements get_measurements() {
     std::array<float, 12> cell_voltages{};
     if (!LTC.getCellVoltages(cell_voltages)) {
         pec15_error_count++;
     }
+    float raw_voltage_module_temp_1 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO1);
+    float raw_voltage_module_temp_2 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO2);
+
+    float sum = 0.0f;
+    float voltage_min = cell_voltages[0];
+    float voltage_max = cell_voltages[0];
     for (size_t i = 0; i < cell_voltages.size(); i++) {
-        String cell_name = cell_name_from_id(i);
-        if (cell_name == "undefined") {
-            continue;
+        sum += cell_voltages[i];
+        if (cell_voltages[i] < voltage_min) {
+            voltage_min = cell_voltages[i];
         }
-        client.publish((topic + "/cell/" + cell_name + "/voltage").c_str(),
-                       String(cell_voltages[i], 3).c_str(), true);
-//        client.publish((module_topic + "/cell/" + cell_name + "/balance_time").c_str(),
-//                       String(cells_to_balance[i]).c_str(), true);
-        if (balance_bits.test(i)) {
-            client.publish((module_topic + "/cell/" + cell_name + "/is_balancing").c_str(), "1", true);
-        } else {
-            client.publish((module_topic + "/cell/" + cell_name + "/is_balancing").c_str(), "0", true);
+        if (cell_voltages[i] > voltage_max) {
+            voltage_max = cell_voltages[i];
+        }
+    }
+    float voltage_avg = 0;
+    if (battery_type == BatteryType::meb8s) {
+        voltage_avg = sum / 8.0f;
+    } else {
+        voltage_avg = sum / 12.0f;
+    }
+
+    Measurements m;
+    for (size_t i = 0; i < cell_voltages.size(); i++) {
+        m.cell_diffs_to_avg[i] = cell_voltages[i] - voltage_avg;
+    }
+    m.cell_voltages = cell_voltages;
+    m.module_voltage = LTC.getStatusVoltage(LTC68041::CHST_SOC);
+    m.module_temp_1 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_1);
+    m.module_temp_2 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_2);
+    m.chip_temp = LTC.getStatusVoltage(LTC.StatusGroup::CHST_ITMP);
+    m.avg_cell_voltage = voltage_avg;
+    m.min_cell_voltage = voltage_min;
+    m.max_cell_voltage = voltage_max;
+    m.soc = voltage_to_soc(voltage_avg);
+    m.cell_diff_trend = 0.0f; // TODO
+
+    return m;
+}
+
+void publish_mqtt_values(const std::bitset<12>& balance_bits, const String& topic, const Measurements& m) {
+    client.publish((module_topic + "/uptime").c_str(), String(millis()).c_str(), true);
+    client.publish((module_topic + "/pec15_error_count").c_str(), String(pec15_error_count).c_str(), true);
+
+    for (size_t i = 0; i < m.cell_voltages.size(); i++) {
+        String cell_name = cell_name_from_id(i);
+        if (cell_name != "undefined") {
+            String cell_voltage_route = topic + "/cell/" + cell_name + "/voltage";
+            String balancing_route = module_topic + "/cell/" + cell_name + "/is_balancing";
+            client.publish(cell_voltage_route.c_str(), String(m.cell_voltages[i], 3).c_str(), true);
+            client.publish(balancing_route.c_str(), balance_bits.test(i) ? "1" : "0", true);
         }
     }
 
-    float module_voltage = LTC.getStatusVoltage(LTC68041::CHST_SOC);
-    client.publish((topic + "/module_voltage").c_str(), String(module_voltage).c_str(), true);
-    float raw_voltage_module_temp_1 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO1);
-    float raw_voltage_module_temp_2 = LTC.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO2);
-    float module_temp_1 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_1);
-    float module_temp_2 = raw_voltage_to_real_module_temp(raw_voltage_module_temp_2);
+    client.publish((topic + "/module_voltage").c_str(), String(m.module_voltage).c_str(), true);
     client.publish((topic + "/module_temps").c_str(),
-                   (String(module_temp_1) + "," + String(module_temp_2)).c_str(), true);
-    float chip_temp = LTC.getStatusVoltage(LTC.StatusGroup::CHST_ITMP);
-    client.publish((topic + "/chip_temp").c_str(), String(chip_temp).c_str(), true);
+                   (String(m.module_temp_1) + "," + String(m.module_temp_2)).c_str(), true);
+    client.publish((topic + "/chip_temp").c_str(), String(m.chip_temp).c_str(), true);
 }
 
 void callback(char *topic, byte *payload, unsigned int length) {
@@ -311,7 +364,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
                 delay(100);
             }
             reconnect();
-            publish_mqtt_values(balance_bits, module_topic + "/accurate");
+            Measurements m = get_measurements();
+            publish_mqtt_values(balance_bits, module_topic + "/accurate", m);
         }
     } else if (topic_string == mac_topic + "/blink") {
         last_blink_time = millis();
@@ -370,21 +424,23 @@ void callback(char *topic, byte *payload, unsigned int length) {
     DEBUG_BEGIN(74880);
     DEBUG_PRINTLN("init");
 
-    uint8_t mac[6];
-    WiFi.macAddress(mac);
-    char mac_string[6 * 2 + 1] = {0};
-    snprintf(mac_string, 6 * 2 + 1, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    hostname = String("easybms-") + mac_string;
+    if (use_mqtt) {
+        uint8_t mac[6];
+        WiFi.macAddress(mac);
+        char mac_string[6 * 2 + 1] = {0};
+        snprintf(mac_string, 6 * 2 + 1, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        hostname = String("easybms-") + mac_string;
 
-    DEBUG_PRINTLN(hostname);
+        DEBUG_PRINTLN();
 
-    mac_topic = String("esp-module/") + mac_string;
-    module_topic = mac_topic;
+        mac_topic = String("esp-module/") + mac_string;
+        module_topic = mac_topic;
 
-    connectWifi();
-    digitalWrite(LED_BUILTIN, true);
+        connectWifi();
+        digitalWrite(LED_BUILTIN, true);
+    }
+
     randomSeed(micros());
-
     LTC.initSPI(D7, D6, D5); //Initialize LTC6804 hardware
 
 #if SSL_ENABLED
@@ -392,6 +448,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
 #endif
 
     client.setCallback(callback);
+    setup_display();
+
 }
 
 bool runTests() {
@@ -447,16 +505,26 @@ bool runTests() {
     return true;
 }
 
+void update_display(const std::bitset<12>& balance_bits, const Measurements& m) {
+    DisplayData data;
+
+    data.measurements = m;
+    data.balance_bits = balance_bits;
+    data.uptime_seconds = millis() / 1000;
+
+    draw_cell_voltages(data);
+}
+
 // the loop function runs over and over again forever
 void loop() {
-    /*
-     * MQTT reconnect if needed
-     */
-    if (!client.connected()) {
-        reconnect();
+    if (use_mqtt) {
+        // MQTT reconnect if needed
+        if (!client.connected()) {
+            reconnect();
+        }
+        last_connection = millis();
+        client.loop();
     }
-    last_connection = millis();
-    client.loop();
 
     if (millis() - last_ltc_check > LTC_CHECK_INTERVAL) {
         last_ltc_check = millis();
@@ -464,9 +532,15 @@ void loop() {
         set_balance_bits(balance_bits);
         set_LTC(balance_bits);
 
-        //runTests();
+        Measurements measurements = get_measurements();
 
-        publish_mqtt_values(balance_bits, module_topic);
+        if (use_mqtt) {
+            publish_mqtt_values(balance_bits, module_topic, measurements);
+        }
+
+        if (use_display) {
+            update_display(balance_bits, measurements);
+        }
     }
     if (millis() - last_blink_time < BLINK_TIME) {
         if ((millis() - last_blink_time) % 100 < 50) {
