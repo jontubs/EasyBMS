@@ -35,7 +35,7 @@ float voltage_to_soc(float cell_voltage) {
         if (lower_voltage <= cell_voltage && cell_voltage <= upper_voltage) {
             float d = (upper_voltage - cell_voltage) / (upper_voltage - lower_voltage);
             float soc = (1 - d) * upper_soc + d * lower_soc;
-            return soc;
+            return soc*100.0f;
         }
     }
 
