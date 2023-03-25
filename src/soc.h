@@ -6,7 +6,6 @@ auto soc_data_points = std::vector<std::pair<float,float>>();
 void initialize_soc_data_points() {
     soc_data_points.push_back({0.000, -0.2});
     soc_data_points.push_back({3.420, 0.0});
-    soc_data_points.push_back({3.420, 0.0});
     soc_data_points.push_back({3.499, 0.1});
     soc_data_points.push_back({3.579, 0.2});
     soc_data_points.push_back({3.615, 0.3});
