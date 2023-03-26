@@ -350,10 +350,8 @@ void publish_mqtt_values(const std::bitset<12>& balance_bits, const String& topi
     for (size_t i = 0; i < m.cell_voltages.size(); i++) {
         String cell_name = cell_name_from_id(i);
         if (cell_name != "undefined") {
-            String cell_voltage_route = topic + "/cell/" + cell_name + "/voltage";
-            String balancing_route = module_topic + "/cell/" + cell_name + "/is_balancing";
-            publish(cell_voltage_route, String(m.cell_voltages[i], 3));
-            publish(balancing_route, balance_bits.test(i) ? "1" : "0");
+            publish(topic + "/cell/" + cell_name + "/voltage", String(m.cell_voltages[i], 3));
+            publish(module_topic + "/cell/" + cell_name + "/is_balancing", balance_bits.test(i) ? "1" : "0");
         }
     }
 
