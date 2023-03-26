@@ -88,10 +88,12 @@ boolean publish(String topic, T value) {
     return client.publish(topic.c_str(), String(value).c_str(), true);
 }
 
+template <>
 boolean publish(String topic, char* value) {
     return client.publish(topic.c_str(), value, true);
 }
 
+template <>
 boolean publish(String topic, String value) {
     return client.publish(topic.c_str(), value.c_str(), true);
 }
