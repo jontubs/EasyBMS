@@ -83,6 +83,45 @@ void connectWifi() {
     DEBUG_PRINTLN(IPAddress(dns_getserver(1)));
 }
 
+template <typename T>
+boolean publish(String topic, T value) {
+    return client.publish(topic.c_str(), String(value).c_str(), true);
+}
+
+boolean publish(String topic, char* value) {
+    return client.publish(topic.c_str(), value, true);
+}
+
+boolean publish(String topic, String value) {
+    return client.publish(topic.c_str(), value.c_str(), true);
+}
+
+boolean subscribe(String topic) {
+    return client.subscribe(topic.c_str());
+}
+
+String cpu_description() {
+    return
+        String(EspClass::getChipId(), HEX) +
+        " " +
+        EspClass::getCpuFreqMHz() + " MHz";
+}
+
+String flash_description() {
+    return
+        String(EspClass::getFlashChipId(), HEX) +
+        ", " +
+        (EspClass::getFlashChipSize() / 1024 / 1024) +
+        " of " +
+        (EspClass::getFlashChipRealSize() / 1024 / 1024) +
+        " MiB, Mode: " +
+        EspClass::getFlashChipMode() +
+        ", Speed: " +
+        (EspClass::getFlashChipSpeed() / 1000 / 1000) +
+        " MHz, Vendor: " +
+        String(EspClass::getFlashChipVendorId(), HEX);
+}
+
 void reconnect() {
     // Loop until we're reconnected
     while (!client.connected()) {
@@ -91,51 +130,32 @@ void reconnect() {
         if (client.connect(hostname.c_str(), mqtt_username, mqtt_password, (module_topic + "/available").c_str(), 0,
                            true, "offline")) {
             DEBUG_PRINTLN("connected");
-            // Once connected, publish an announcement...
-            client.publish((module_topic + "/available").c_str(), "online", true);
+            // Once connected, publish an announcement
+            publish(module_topic + "/available", "online");
             if (!module_topic.equals(mac_topic)) {
-                client.publish((mac_topic + "/available").c_str(), "undefined", true);
+                publish(mac_topic + "/available", "undefined");
             }
-            client.publish((mac_topic + "/module_topic").c_str(), module_topic.c_str(), true);
-            client.publish((mac_topic + "/version").c_str(), VERSION, true);
-            client.publish((mac_topic + "/build_timestamp").c_str(), BUILD_TIMESTAMP, true);
-            client.publish((mac_topic + "/wifi").c_str(), WiFi.SSID().c_str(), true);
-            client.publish((mac_topic + "/ip").c_str(), WiFi.localIP().toString().c_str(), true);
-            client.publish((mac_topic + "/esp_sdk").c_str(), EspClass::getFullVersion().c_str(), true);
-            client.publish((mac_topic + "/cpu").c_str(), (
-                    String(EspClass::getChipId(), HEX) +
-                    " " +
-                    EspClass::getCpuFreqMHz() + " MHz"
-            ).c_str(), true);
-            client.publish((mac_topic + "/flash").c_str(), (
-                    String(EspClass::getFlashChipId(), HEX) +
-                    ", " +
-                    (EspClass::getFlashChipSize() / 1024 / 1024) +
-                    " of " +
-                    (EspClass::getFlashChipRealSize() / 1024 / 1024) +
-                    " MiB, Mode: " +
-                    EspClass::getFlashChipMode() +
-                    ", Speed: " +
-                    (EspClass::getFlashChipSpeed() / 1000 / 1000) +
-                    " MHz, Vendor: " +
-                    String(EspClass::getFlashChipVendorId(), HEX)
-            ).c_str(), true);
-            // ... and resubscribe
-            client.subscribe("master/uptime");
+            publish(mac_topic + "/module_topic", module_topic);
+            publish(mac_topic + "/version", VERSION);
+            publish(mac_topic + "/build_timestamp", BUILD_TIMESTAMP);
+            publish(mac_topic + "/wifi", WiFi.SSID());
+            publish(mac_topic + "/ip", WiFi.localIP().toString());
+            publish(mac_topic + "/esp_sdk", EspClass::getFullVersion());
+            publish(mac_topic + "/cpu", cpu_description());
+            publish(mac_topic + "/flash", flash_description());
+            // Resubscribe
+            subscribe("master/uptime");
             for (int i = 0; i < 12; ++i) {
-                client.subscribe((module_topic + "/cell/" + (i + 1) + "/balance_request").c_str());
+                subscribe(module_topic + "/cell/" + (i + 1) + "/balance_request");
             }
-            client.subscribe((module_topic + "/read_accurate").c_str());
-            client.subscribe((mac_topic + "/blink").c_str());
-            client.subscribe((mac_topic + "/set_config").c_str());
-            client.subscribe((mac_topic + "/restart").c_str());
-            client.subscribe((mac_topic + "/ota").c_str());
+            subscribe(module_topic + "/read_accurate");
+            subscribe(mac_topic + "/blink");
+            subscribe(mac_topic + "/set_config");
+            subscribe(mac_topic + "/restart");
+            subscribe(mac_topic + "/ota");
         } else {
             DEBUG_PRINT("failed, rc=");
             DEBUG_PRINT(client.state());
-            //   DEBUG_PRINTLN(" try again in 5 seconds");
-            // Wait 5 seconds before retrying
-            // delay(5000);
             if (last_connection != 0 && millis() - last_connection >= 30000) {
                 EspClass::restart();
             }
@@ -322,23 +342,22 @@ Measurements get_measurements() {
 }
 
 void publish_mqtt_values(const std::bitset<12>& balance_bits, const String& topic, const Measurements& m) {
-    client.publish((module_topic + "/uptime").c_str(), String(millis()).c_str(), true);
-    client.publish((module_topic + "/pec15_error_count").c_str(), String(pec15_error_count).c_str(), true);
+    publish(module_topic + "/uptime", millis());
+    publish(module_topic + "/pec15_error_count", pec15_error_count);
 
     for (size_t i = 0; i < m.cell_voltages.size(); i++) {
         String cell_name = cell_name_from_id(i);
         if (cell_name != "undefined") {
             String cell_voltage_route = topic + "/cell/" + cell_name + "/voltage";
             String balancing_route = module_topic + "/cell/" + cell_name + "/is_balancing";
-            client.publish(cell_voltage_route.c_str(), String(m.cell_voltages[i], 3).c_str(), true);
-            client.publish(balancing_route.c_str(), balance_bits.test(i) ? "1" : "0", true);
+            publish(cell_voltage_route, String(m.cell_voltages[i], 3));
+            publish(balancing_route, balance_bits.test(i) ? "1" : "0");
         }
     }
 
-    client.publish((topic + "/module_voltage").c_str(), String(m.module_voltage).c_str(), true);
-    client.publish((topic + "/module_temps").c_str(),
-                   (String(m.module_temp_1) + "," + String(m.module_temp_2)).c_str(), true);
-    client.publish((topic + "/chip_temp").c_str(), String(m.chip_temp).c_str(), true);
+    publish(topic + "/module_voltage", m.module_voltage);
+    publish(topic + "/module_temps", String(m.module_temp_1) + "," + String(m.module_temp_2));
+    publish(topic + "/chip_temp", m.chip_temp);
 }
 
 void callback(char *topic, byte *payload, unsigned int length) {
@@ -404,10 +423,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
             EspClass::restart();
         }
     } else if (topic_string == mac_topic + "/ota") {
-        client.publish((mac_topic + "/ota_start").c_str(),
-                       (String("ota started [") + payload_string + "] (" + millis() + ")").c_str());
-        client.publish((mac_topic + "/ota_url").c_str(),
-                       (String("https://") + ota_server + payload_string).c_str());
+        publish(mac_topic + "/ota_start", String("ota started [") + payload_string + "] (" + millis() + ")");
+        publish(mac_topic + "/ota_url", String("https://") + ota_server + payload_string);
         WiFiClientSecure client_secure;
         client_secure.setTrustAnchors(&cert);
         client_secure.setTimeout(60);
@@ -420,16 +437,16 @@ void callback(char *topic, byte *payload, unsigned int length) {
                 error_string += ESPhttpUpdate.getLastErrorString();
                 error_string += "\n";
                 DEBUG_PRINTLN(error_string);
-                client.publish((mac_topic + "/ota_ret").c_str(), error_string.c_str());
+                publish(mac_topic + "/ota_ret", error_string);
             }
                 break;
             case HTTP_UPDATE_NO_UPDATES:
                 DEBUG_PRINTLN("HTTP_UPDATE_NO_UPDATES");
-                client.publish((mac_topic + "/ota_ret").c_str(), "HTTP_UPDATE_NO_UPDATES");
+                publish(mac_topic + "/ota_ret", "HTTP_UPDATE_NO_UPDATES");
                 break;
             case HTTP_UPDATE_OK:
                 DEBUG_PRINTLN("HTTP_UPDATE_OK");
-                client.publish((mac_topic + "/ota_ret").c_str(), "HTTP_UPDATE_OK");
+                publish(mac_topic + "/ota_ret", "HTTP_UPDATE_OK");
                 break;
         }
     }
