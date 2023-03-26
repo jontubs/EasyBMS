@@ -9,6 +9,7 @@
 #include "version.h"
 #include "display.h"
 #include "soc.h"
+#include "TimedHistory.hpp"
 #include "Measurements.hpp"
 
 #define DEBUG
@@ -51,6 +52,9 @@ unsigned long last_blink_time = 0;
 unsigned long long last_master_uptime = 0;
 
 unsigned long pec15_error_count = 0;
+
+// Store cell diff history with 1h retention and 1 min granularity
+auto cell_diff_history = TimedHistory<float>(1000*60*60, 1000*60);
 
 bool led_builtin_state = false;
 
@@ -293,8 +297,26 @@ Measurements get_measurements() {
     m.avg_cell_voltage = voltage_avg;
     m.min_cell_voltage = voltage_min;
     m.max_cell_voltage = voltage_max;
+    m.cell_diff = voltage_max - voltage_min;
     m.soc = voltage_to_soc(voltage_avg);
-    m.cell_diff_trend = 0.0f; // TODO
+    m.cell_diff_trend = 0.0f;
+
+    // Calculate cell diff trend
+    cell_diff_history.insert(m.cell_diff);
+    long current_time = millis();
+    auto result = cell_diff_history.oldest_element();
+    if (result.has_value()) {
+        float history_cell_diff = result.value().value;
+        float history_timestamp = result.value().timestamp;
+
+        if (current_time > history_timestamp) {
+            // Cell diff change per hour in the last hour
+            float change = m.cell_diff - history_cell_diff;
+            float time_hours = (float)(current_time - history_timestamp) / (float)(1000*60*60);
+            m.cell_diff_trend = change / time_hours;
+            DEBUG_PRINT(String("Cell Diff Trend: ") + m.cell_diff_trend + " mV/h");
+        }
+    }
 
     return m;
 }

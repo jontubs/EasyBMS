@@ -6,6 +6,7 @@
 struct Measurements {
     std::array<float, 12> cell_voltages;
     std::array<float, 12> cell_diffs_to_avg;
+    float cell_diff;
     float cell_diff_trend; // "Current cell diff" difference to "cell diff 1h ago"
     float min_cell_voltage;
     float max_cell_voltage;

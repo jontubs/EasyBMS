@@ -1,5 +1,4 @@
-#ifndef DISPLAY_H
-#define DISPLAY_H
+#pragma once
 
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_ST7735.h> // Hardware-specific library for ST7735
@@ -22,5 +21,3 @@ struct DisplayData {
 
 void setup_display(void);
 void draw_cell_voltages(const DisplayData& data);
-
-#endif
