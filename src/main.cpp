@@ -1,14 +1,13 @@
 #include <ESP8266httpUpdate.h>
-#include <ESP8266WiFi.h>
 #include <LTC6804.h>
 #include <LTC6804.cpp> // used for template functions
-#include <lwip/dns.h>
 #include <PubSubClient.h>
 
 #include "config.h"
 #include "version.h"
 #include "display.h"
 #include "soc.h"
+#include "wifi.h"
 #include "TimedHistory.hpp"
 #include "Measurements.hpp"
 
@@ -57,31 +56,6 @@ unsigned long pec15_error_count = 0;
 auto cell_diff_history = TimedHistory<float>(1000*60*60, 1000*60);
 
 bool led_builtin_state = false;
-
-// connect to wifi
-void connectWifi() {
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("connecting to ");
-    DEBUG_PRINTLN(ssid);
-    ESP8266WiFiClass::persistent(false);
-    WiFi.softAPdisconnect(true);
-    WiFi.mode(WIFI_STA);
-    WiFi.hostname(hostname);
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(100);
-        DEBUG_PRINT(".");
-    }
-    DEBUG_PRINTLN("");
-    DEBUG_PRINTLN("WiFi connected");
-    DEBUG_PRINTLN("IP address: ");
-    DEBUG_PRINTLN(WiFi.localIP());
-
-    DEBUG_PRINT("DNS1: ");
-    DEBUG_PRINTLN(IPAddress(dns_getserver(0)));
-    DEBUG_PRINT("DNS2: ");
-    DEBUG_PRINTLN(IPAddress(dns_getserver(1)));
-}
 
 template <typename T>
 boolean publish(String topic, T value) {
@@ -464,18 +438,13 @@ void callback(char *topic, byte *payload, unsigned int length) {
     DEBUG_PRINTLN("init");
 
     if (use_mqtt) {
-        uint8_t mac[6];
-        WiFi.macAddress(mac);
-        char mac_string[6 * 2 + 1] = {0};
-        snprintf(mac_string, 6 * 2 + 1, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        hostname = String("easybms-") + mac_string;
+        String mac = mac_string();
 
-        DEBUG_PRINTLN();
-
-        mac_topic = String("esp-module/") + mac_string;
+        hostname = String("easybms-") + mac;
+        mac_topic = String("esp-module/") + mac;
         module_topic = mac_topic;
 
-        connectWifi();
+        connect_wifi(hostname, ssid, password);
         digitalWrite(LED_BUILTIN, true);
     }
 
